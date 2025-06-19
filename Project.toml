@@ -1,7 +1,7 @@
 name = "PartitionedMPSs"
 uuid = "17ce1de9-5131-45e3-8a48-9723b6e2dc23"
 authors = ["Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors"]
-version = "0.6.0"
+version = "0.6.1"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
@@ -20,7 +20,7 @@ Distributed = "1"
 EllipsisNotation = "1"
 FastMPOContractions = "0.2.8"
 ITensorMPS = "0.3.2"
-ITensors = "0.7"
+ITensors = "0.7, 0.8, 0.9"
 OrderedCollections = "1.6.3"
 julia = "1.6"
 
