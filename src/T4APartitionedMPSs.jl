@@ -5,7 +5,7 @@ using EllipsisNotation
 using LinearAlgebra: LinearAlgebra
 
 import ITensors: ITensors, Index, ITensor, dim, inds, qr, commoninds, uniqueinds, hasplev
-using T4AITensorCompat: TensorTrain
+import T4AITensorCompat: TensorTrain
 import T4AITensorCompat:
     siteinds,
     findsites,
