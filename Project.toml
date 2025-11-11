@@ -1,7 +1,7 @@
 name = "T4APartitionedMPSs"
 uuid = "f7a3e09c-877e-4116-af24-45397c1413c2"
 authors = ["Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors"]
-version = "0.7.2"
+version = "0.7.3"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
