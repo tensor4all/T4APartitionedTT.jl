@@ -6,7 +6,17 @@ using LinearAlgebra: LinearAlgebra
 
 import ITensors: ITensors, Index, ITensor, dim, inds, qr, commoninds, uniqueinds, hasplev
 using T4AITensorCompat: TensorTrain
-import T4AITensorCompat: siteinds, findsites, findsite, maxlinkdim, dist, isortho, orthocenter, contract, truncate, fit
+import T4AITensorCompat:
+    siteinds,
+    findsites,
+    findsite,
+    maxlinkdim,
+    dist,
+    isortho,
+    orthocenter,
+    contract,
+    truncate,
+    fit
 import T4AITensorCompat: T4AITensorCompat
 import ITensors.TagSets: hastag, hastags
 import ITensors: Algorithm, @Algorithm_str

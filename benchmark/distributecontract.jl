@@ -32,7 +32,9 @@ end
 using ITensors
 import T4AITensorCompat: TensorTrain, MPS, MPO
 
-random_mpo_file = normpath(joinpath(dirname(pathof(T4APartitionedMPSs)), "../test/_util.jl"))
+random_mpo_file = normpath(
+    joinpath(dirname(pathof(T4APartitionedMPSs)), "../test/_util.jl")
+)
 
 Random.seed!(1234)
 R = 10

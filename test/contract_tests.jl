@@ -64,7 +64,9 @@ import T4AITensorCompat: TensorTrain, contract
                 (x, y) -> +(x, y; alg="directsum"),
                 [
                     contract(
-                        proj_a[x, k].data, proj_b[k, y].data; alg=ITensors.Algorithm"naive"()
+                        proj_a[x, k].data,
+                        proj_b[k, y].data;
+                        alg=ITensors.Algorithm"naive"(),
                     ) for k in 1:2
                 ],
             )

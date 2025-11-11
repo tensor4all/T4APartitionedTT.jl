@@ -16,9 +16,7 @@ function contract(
     proj, _ = _projector_after_contract(M1, M2)
 
     alg_str::String = alg isa String ? alg : _alg_map[alg]
-    Ψ = contract(
-        M1.data, M2.data; alg=Algorithm(alg_str), kwargs...
-    )
+    Ψ = contract(M1.data, M2.data; alg=Algorithm(alg_str), kwargs...)
     return project(SubDomainMPS(Ψ), proj)
 end
 

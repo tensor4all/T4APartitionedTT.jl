@@ -6,7 +6,15 @@ using Random
 import T4AITensorCompat: TensorTrain, MPS, MPO, siteinds
 
 import T4APartitionedMPSs:
-    T4APartitionedMPSs, Projector, project, SubDomainMPS, PartitionedMPS, prime, noprime, dist, siteinds
+    T4APartitionedMPSs,
+    Projector,
+    project,
+    SubDomainMPS,
+    PartitionedMPS,
+    prime,
+    noprime,
+    dist,
+    siteinds
 
 @testset "partitionedmps.jl" begin
     @testset "two blocks" begin
@@ -81,7 +89,8 @@ import T4APartitionedMPSs:
         coeffs = rand(length(projectors))
         prjΨs = [project(Ψ, p) for p in projectors]
 
-        @test TensorTrain(+([PartitionedMPS(x) for x in prjΨs]...; coeffs=coeffs)) ≈ +([c * TensorTrain(x) for (c, x) in zip(coeffs, prjΨs)]...; alg="directsum")
+        @test TensorTrain(+([PartitionedMPS(x) for x in prjΨs]...; coeffs=coeffs)) ≈
+            +([c * TensorTrain(x) for (c, x) in zip(coeffs, prjΨs)]...; alg="directsum")
     end
 
     @testset "truncate" begin

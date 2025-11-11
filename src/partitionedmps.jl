@@ -239,7 +239,8 @@ function _to_tensortrain(
     obj::PartitionedMPS; cutoff=default_cutoff(), maxdim=default_maxdim()
 )
     return reduce(
-        (x, y) -> T4AITensorCompat.truncate(+(x, y; alg="directsum"); cutoff, maxdim), values(obj.data)
+        (x, y) -> T4AITensorCompat.truncate(+(x, y; alg="directsum"); cutoff, maxdim),
+        values(obj.data),
     ).data # direct sum
 end
 

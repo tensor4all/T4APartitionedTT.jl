@@ -64,7 +64,8 @@ function project(projΨ::SubDomainMPS, projector::Projector)::Union{Nothing,SubD
     end
 
     return SubDomainMPS(
-        TensorTrain([project(projΨ.data[n], projector) for n in 1:length(projΨ.data)]), projector
+        TensorTrain([project(projΨ.data[n], projector) for n in 1:length(projΨ.data)]),
+        projector,
     )
 end
 
@@ -212,7 +213,9 @@ function Base.:-(obj::SubDomainMPS)::SubDomainMPS
 end
 
 function truncate(obj::SubDomainMPS; kwargs...)::SubDomainMPS
-    return project(SubDomainMPS(T4AITensorCompat.truncate(obj.data; kwargs...)), obj.projector)
+    return project(
+        SubDomainMPS(T4AITensorCompat.truncate(obj.data; kwargs...)), obj.projector
+    )
 end
 
 function LinearAlgebra.norm(M::SubDomainMPS)

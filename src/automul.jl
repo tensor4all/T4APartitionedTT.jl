@@ -21,8 +21,10 @@ function elemmul(
     cutoff=1e-25,
     kwargs...,
 )
-    all(length.(ITensors.siteinds(M1)) .== 1) || error("M1 should have only 1 site index per site")
-    all(length.(ITensors.siteinds(M2)) .== 1) || error("M2 should have only 1 site index per site")
+    all(length.(ITensors.siteinds(M1)) .== 1) ||
+        error("M1 should have only 1 site index per site")
+    all(length.(ITensors.siteinds(M2)) .== 1) ||
+        error("M2 should have only 1 site index per site")
 
     only.(ITensors.siteinds(M1)) == only.(ITensors.siteinds(M2)) ||
         error("Sites for element wise multiplication should be identical")
@@ -69,8 +71,10 @@ function automul(
     cutoff=1e-25,
     kwargs...,
 )
-    all(length.(ITensors.siteinds(M1)) .== 1) || error("M1 should have only 1 site index per site")
-    all(length.(ITensors.siteinds(M2)) .== 1) || error("M2 should have only 1 site index per site")
+    all(length.(ITensors.siteinds(M1)) .== 1) ||
+        error("M1 should have only 1 site index per site")
+    all(length.(ITensors.siteinds(M2)) .== 1) ||
+        error("M2 should have only 1 site index per site")
 
     sites_row = _findallsiteinds_by_tag(M1; tag=tag_row)
     sites_shared = _findallsiteinds_by_tag(M1; tag=tag_shared)

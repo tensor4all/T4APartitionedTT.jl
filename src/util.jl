@@ -81,7 +81,9 @@ function rearrange_siteinds(M::TensorTrain, sites::Vector{Vector{Index}})::Tenso
     return rearrange_siteinds(M, sites_typed)
 end
 
-function rearrange_siteinds(M::TensorTrain, sites::Vector{Vector{Index{T}}})::TensorTrain where {T}
+function rearrange_siteinds(
+    M::TensorTrain, sites::Vector{Vector{Index{T}}}
+)::TensorTrain where {T}
     sitesold = siteinds(M)
 
     Set(Iterators.flatten(sites)) == Set(Iterators.flatten(sitesold)) ||

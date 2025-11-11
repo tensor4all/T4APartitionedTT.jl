@@ -15,7 +15,6 @@ import T4APartitionedMPSs:
     makesitediagonal,
     extractdiagonal
 
-
 @testset "subdomainmps.jl" begin
     @testset "SubDomainMPS" begin
         Random.seed!(1)
