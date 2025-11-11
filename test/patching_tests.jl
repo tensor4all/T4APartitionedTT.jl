@@ -1,9 +1,11 @@
 using Test
-import PartitionedMPSs:
-    PartitionedMPSs, Projector, project, SubDomainMPS, adaptive_patching, PartitionedMPS
-import FastMPOContractions as FMPOC
+import T4APartitionedMPSs:
+    T4APartitionedMPSs, Projector, project, SubDomainMPS, adaptive_patching, PartitionedMPS
+import T4AITensorCompat: TensorTrain
 using ITensors
 using Random
+
+include("_util.jl")
 
 @testset "patching.jl" begin
     @testset "adaptive_patching" begin
@@ -15,7 +17,8 @@ using Random
 
         sites = collect(collect.(zip(sitesx, sitesy)))
 
-        subdmps = SubDomainMPS(_random_mpo(sites; linkdims=20))
+        mpo = _random_mpo(sites; linkdims=20)
+        subdmps = SubDomainMPS(mpo)
 
         sites_ = collect(Iterators.flatten(sites))
         partmps = PartitionedMPS(
@@ -24,6 +27,6 @@ using Random
 
         @test length(values((partmps))) > 1
 
-        @test MPS(partmps) ≈ MPS(subdmps) rtol = 1e-12
+        @test TensorTrain(partmps) ≈ TensorTrain(subdmps) rtol = 1e-12
     end
 end

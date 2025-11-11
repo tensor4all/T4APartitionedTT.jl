@@ -1,9 +1,10 @@
 using Test
-import PartitionedMPSs:
-    PartitionedMPSs, PartitionedMPS, Projector, project, SubDomainMPS, projcontract
-import FastMPOContractions as FMPOC
+import T4APartitionedMPSs:
+    T4APartitionedMPSs, PartitionedMPS, Projector, project, SubDomainMPS, projcontract
+import T4AITensorCompat: TensorTrain, contract
 
-asMPO(M::AbstractMPS) = MPO(collect(M))
+include("_util.jl")
+
 @testset "contract.jl" begin
     @testset "contract (xk-y-z)" begin
         R = 3
@@ -15,10 +16,12 @@ asMPO(M::AbstractMPS) = MPO(collect(M))
         sitesa = collect(collect.(zip(sitesx, sitesk, sitesy)))
         sitesb = collect(collect.(zip(sitesy, sitesz)))
 
-        p1 = project(SubDomainMPS(_random_mpo(sitesa)), Projector(Dict(sitesx[1] => 1)))
-        p2 = project(SubDomainMPS(_random_mpo(sitesb)), Projector(Dict(sitesz[1] => 1)))
+        a_mpo = _random_mpo(sitesa)
+        b_mpo = _random_mpo(sitesb)
+        p1 = project(SubDomainMPS(a_mpo), Projector(Dict(sitesx[1] => 1)))
+        p2 = project(SubDomainMPS(b_mpo), Projector(Dict(sitesz[1] => 1)))
 
-        p12 = PartitionedMPSs.contract(p1, p2; alg="naive")
+        p12 = T4APartitionedMPSs.contract(p1, p2; alg="naive")
 
         @test p12.projector == Projector(Dict(sitesx[1] => 1, sitesz[1] => 1))
 
@@ -62,17 +65,17 @@ asMPO(M::AbstractMPS) = MPO(collect(M))
             ref = reduce(
                 (x, y) -> +(x, y; alg="directsum"),
                 [
-                    FMPOC.contract_mpo_mpo(
-                        asMPO(proj_a[x, k].data), asMPO(proj_b[k, y].data); alg="naive"
+                    contract(
+                        proj_a[x, k].data, proj_b[k, y].data; alg=ITensors.Algorithm"naive"()
                     ) for k in 1:2
                 ],
             )
-            @test res[1].data ≈ MPS(collect(ref.data))
+            @test res[1].data ≈ ref
         end
 
         patchorder = patching ? collect(Iterators.flatten(zip(sitesx, sitesz))) : Index[]
         maxdim_ = patching ? linkdims^2 : typemax(Int)
-        ab = PartitionedMPSs.contract(
+        ab = T4APartitionedMPSs.contract(
             PartitionedMPS(vec(proj_a)),
             PartitionedMPS(vec(proj_b));
             alg="fit",
@@ -80,7 +83,7 @@ asMPO(M::AbstractMPS) = MPO(collect(M))
             maxdim=maxdim_,
             patchorder,
         )
-        @test MPS(ab; cutoff) ≈ MPS(collect(contract(a, b; alg="naive"))) rtol =
+        @test TensorTrain(ab; cutoff) ≈ contract(a, b; alg=ITensors.Algorithm"naive"()) rtol =
             10 * sqrt(cutoff)
     end
 end

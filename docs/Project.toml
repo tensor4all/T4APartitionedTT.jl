@@ -1,3 +1,3 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-PartitionedMPSs = "17ce1de9-5131-45e3-8a48-9723b6e2dc23"
+T4APartitionedMPSs = "17ce1de9-5131-45e3-8a48-9723b6e2dc23"

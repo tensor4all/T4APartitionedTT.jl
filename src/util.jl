@@ -71,8 +71,18 @@ function _asdiagonal(t, site::Index{T}; baseplev=0)::ITensor where {T<:Number}
     )
 end
 
-function rearrange_siteinds(M::AbstractMPS, sites::Vector{Vector{Index{T}}})::MPS where {T}
-    sitesold = siteinds(MPO(collect(M)))
+function rearrange_siteinds(M::TensorTrain, sites::Vector{Vector{Index}})::TensorTrain
+    # Convert to Vector{Vector{Index{T}}} for type compatibility
+    if isempty(sites)
+        return M
+    end
+    T = typeof(sites[1][1]).parameters[1]
+    sites_typed = Vector{Vector{Index{T}}}(sites)
+    return rearrange_siteinds(M, sites_typed)
+end
+
+function rearrange_siteinds(M::TensorTrain, sites::Vector{Vector{Index{T}}})::TensorTrain where {T}
+    sitesold = siteinds(M)
 
     Set(Iterators.flatten(sites)) == Set(Iterators.flatten(sitesold)) ||
         error("siteinds do not match $(sites) != $(sitesold)")
@@ -103,7 +113,7 @@ function rearrange_siteinds(M::AbstractMPS, sites::Vector{Vector{Index{T}}})::MP
         tensors[i], t, _ = qr(t, linds)
     end
     tensors[end] *= t
-    return MPS(tensors)
+    return TensorTrain(tensors)
 end
 
 # A valid tag should not contain "=".
@@ -158,11 +168,11 @@ function findallsiteinds_by_tag(
 end
 
 function findallsites_by_tag(
-    sites::Vector{Vector{Index{T}}}; tag::String="x", maxnsites::Int=1000
-)::Vector{NTuple{2,Int}} where {T}
+    sites::AbstractVector{<:AbstractVector{<:Index}}; tag::String="x", maxnsites::Int=1000
+)::Vector{NTuple{2,Int}}
     _valid_tag(tag) || error("Invalid tag: $tag")
 
-    sites_dict = Dict{Index{T},NTuple{2,Int}}()
+    sites_dict = Dict{Index,NTuple{2,Int}}()
     for i in 1:length(sites)
         for j in 1:length(sites[i])
             sites_dict[sites[i][j]] = (i, j)
@@ -217,18 +227,18 @@ function _find_site_allplevs(
     ]
 end
 
-function makesitediagonal(M::AbstractMPS, tag::String)::MPS
-    M_ = deepcopy(MPO(collect(M)))
+function makesitediagonal(M::TensorTrain, tag::String)::TensorTrain
+    M_ = deepcopy(M)
     sites = siteinds(M_)
 
-    target_positions = findallsites_by_tag(siteinds(M_); tag=tag)
+    target_positions = findallsites_by_tag(sites; tag=tag)
 
     for t in eachindex(target_positions)
         i, j = target_positions[t]
         M_[i] = _asdiagonal(M_[i], sites[i][j])
     end
 
-    return MPS(collect(M_))
+    return M_
 end
 
 function _extract_diagonal(t, site::Index{T}, site2::Index{T}) where {T<:Number}
@@ -243,9 +253,9 @@ function _extract_diagonal(t, site::Index{T}, site2::Index{T}) where {T<:Number}
 end
 
 """
-Contract two adjacent tensors in MPO
+Contract two adjacent tensors in TensorTrain
 """
-function combinesites(M::MPO, site1::Index, site2::Index)
+function combinesites(M::TensorTrain, site1::Index, site2::Index)
     p1 = findsite(M, site1)
     p2 = findsite(M, site2)
     p1 === nothing && error("Not found $site1")
@@ -253,29 +263,51 @@ function combinesites(M::MPO, site1::Index, site2::Index)
     abs(p1 - p2) == 1 || error(
         "$site1 and $site2 are found at indices $p1 and $p2. They must be on two adjacent sites.",
     )
-    tensors = ITensors.data(M)
+    tensors = M.data
     idx = min(p1, p2)
     tensor = tensors[idx] * tensors[idx + 1]
     deleteat!(tensors, idx:(idx + 1))
     insert!(tensors, idx, tensor)
-    return MPO(tensors)
+    return TensorTrain(tensors)
 end
 
 function combinesites(
     sites::Vector{Vector{Index{IndsT}}},
-    site1::AbstractVector{Index{IndsT}},
-    site2::AbstractVector{Index{IndsT}},
+    site1::AbstractVector{<:Index},
+    site2::AbstractVector{<:Index},
 ) where {IndsT}
     length(site1) == length(site2) || error("Length mismatch")
+    # Simply pass through - the Index type should be compatible
     for (s1, s2) in zip(site1, site2)
         sites = combinesites(sites, s1, s2)
     end
     return sites
 end
 
+# More flexible version that infers IndsT from sites
+function combinesites(
+    sites::Vector{Vector{Index}},
+    site1::AbstractVector{<:Index},
+    site2::AbstractVector{<:Index},
+)
+    length(site1) == length(site2) || error("Length mismatch")
+    if isempty(sites)
+        return sites
+    end
+    # Infer IndsT from the first element
+    IndsT = typeof(sites[1][1]).parameters[1]
+    # Convert to typed version
+    sites_typed = Vector{Vector{Index{IndsT}}}(sites)
+    for (s1, s2) in zip(site1, site2)
+        sites_typed = combinesites(sites_typed, s1, s2)
+    end
+    return sites_typed
+end
+
 function combinesites(
     sites::Vector{Vector{Index{IndsT}}}, site1::Index, site2::Index
 ) where {IndsT}
+    # Allow any Index type, not just Index{IndsT}
     sites = deepcopy(sites)
     p1 = findfirst(x -> x[1] == site1, sites)
     p2 = findfirst(x -> x[1] == site2, sites)

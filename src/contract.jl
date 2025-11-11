@@ -16,8 +16,8 @@ function contract(
     proj, _ = _projector_after_contract(M1, M2)
 
     alg_str::String = alg isa String ? alg : _alg_map[alg]
-    Ψ = FMPOC.contract_mpo_mpo(
-        MPO(collect(M1.data)), MPO(collect(M2.data)); alg=alg_str, kwargs...
+    Ψ = contract(
+        M1.data, M2.data; alg=Algorithm(alg_str), kwargs...
     )
     return project(SubDomainMPS(Ψ), proj)
 end
@@ -159,7 +159,7 @@ function add_result_patch!(
     return proj
 end
 
-# Preprocessing of the patches to obtain all the contraction tasks from two PartitionedMPSs
+# Preprocessing of the patches to obtain all the contraction tasks from two T4APartitionedMPSs
 function _contraction_tasks(
     M1::PartitionedMPS,
     M2::PartitionedMPS;
@@ -203,7 +203,7 @@ function _contraction_tasks(
 end
 
 """
-Contract two PartitionedMPSs MPS objects.
+Contract two T4APartitionedMPSs MPS objects.
 
 At each site, the objects must share at least one site index.
 """

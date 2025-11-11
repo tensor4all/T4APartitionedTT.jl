@@ -1,5 +1,6 @@
 using Test
-import PartitionedMPSs: Projector, hasoverlap
+using ITensors
+import T4APartitionedMPSs: Projector, hasoverlap
 
 @testset "Projector" begin
     @testset "constructor" begin

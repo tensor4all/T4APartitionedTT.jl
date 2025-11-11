@@ -1,0 +1,10 @@
+Replace ITensorMPS and FastMPOContractions dependencies with T4AITensorCompat
+
+- Remove ITensorMPS and FastMPOContractions from dependencies
+- Add T4AITensorCompat as dependency
+- Update all code to use TensorTrain type from T4AITensorCompat
+- Add prime and noprime functions for TensorTrain in T4AITensorCompat
+- Update all test files to use new types and include _util.jl
+- Fix type compatibility issues in combinesites and rearrange_siteinds
+- Update truncate calls to use T4AITensorCompat.truncate
+- All tests passing

@@ -1,7 +1,6 @@
-using PartitionedMPSs: PartitionedMPSs
+using T4APartitionedMPSs: T4APartitionedMPSs
 using Random
 using ITensors
-using ITensorMPS
 using Test
 
 include("_util.jl")

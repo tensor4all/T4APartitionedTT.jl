@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = PartitionedMPSs
+CurrentModule = T4APartitionedMPSs
 ```
 
-# PartitionedMPSs
+# T4APartitionedMPSs
 
-Documentation for [PartitionedMPSs](https://github.com/tensor4all/PartitionedMPSs.jl).
+Documentation for [T4APartitionedMPSs](https://github.com/tensor4all/T4APartitionedMPSs.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [PartitionedMPSs]
+Modules = [T4APartitionedMPSs]
 ```

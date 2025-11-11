@@ -233,18 +233,36 @@ function truncate(
 end
 
 # Only for debug
-function ITensorMPS.MPS(
+# Convert PartitionedMPS to MPS/MPO (TensorTrain)
+# Since MPS and MPO are both TensorTrain (type aliases), we use a single helper function
+function _to_tensortrain(
     obj::PartitionedMPS; cutoff=default_cutoff(), maxdim=default_maxdim()
-)::MPS
+)
     return reduce(
-        (x, y) -> truncate(+(x, y; alg="directsum"); cutoff, maxdim), values(obj.data)
+        (x, y) -> T4AITensorCompat.truncate(+(x, y; alg="directsum"); cutoff, maxdim), values(obj.data)
     ).data # direct sum
 end
 
-function ITensorMPS.MPO(
+# TensorTrain conversion - returns TensorTrain
+function TensorTrain(
     obj::PartitionedMPS; cutoff=default_cutoff(), maxdim=default_maxdim()
-)::MPO
-    return MPO(collect(MPS(obj; cutoff=cutoff, maxdim=maxdim)))
+)::TensorTrain
+    return _to_tensortrain(obj; cutoff=cutoff, maxdim=maxdim)
+end
+
+# MPS conversion - returns TensorTrain
+function MPS(
+    obj::PartitionedMPS; cutoff=default_cutoff(), maxdim=default_maxdim()
+)::TensorTrain
+    return _to_tensortrain(obj; cutoff=cutoff, maxdim=maxdim)
+end
+
+# MPO conversion - returns TensorTrain
+function MPO(
+    obj::PartitionedMPS; cutoff=default_cutoff(), maxdim=default_maxdim()
+)::TensorTrain
+    # Convert to TensorTrain (same as MPS since both are TensorTrain)
+    return _to_tensortrain(obj; cutoff=cutoff, maxdim=maxdim)
 end
 
 """
@@ -273,9 +291,9 @@ function extractdiagonal(obj::PartitionedMPS, sites)
 end
 
 function dist(a::PartitionedMPS, b::PartitionedMPS)
-    return sqrt(sum(ITensorMPS.dist(MPS(a[k]), MPS(b[k]))^2 for k in keys(a)))
+    return sqrt(sum(dist(TensorTrain(a[k]), TensorTrain(b[k]))^2 for k in keys(a)))
 end
 
 function _findallsiteinds_by_tag(partmps::PartitionedMPS; tag=tag)
-    return findallsiteinds_by_tag(only.(siteinds(partmps)); tag=tag)
+    return findallsiteinds_by_tag(only.(ITensors.siteinds(partmps)); tag=tag)
 end

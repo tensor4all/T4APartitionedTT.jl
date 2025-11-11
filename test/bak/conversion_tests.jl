@@ -5,9 +5,9 @@ using ITensors
 import TensorCrossInterpolation as TCI
 import TCIAlgorithms as TCIA
 using TCIITensorConversion
-import PartitionedMPSs: PartitionedMPSs
+import T4APartitionedMPSs: T4APartitionedMPSs
 
-conversion_file = normpath(joinpath(dirname(pathof(PartitionedMPSs)), "bak/conversion.jl"))
+conversion_file = normpath(joinpath(dirname(pathof(T4APartitionedMPSs)), "bak/conversion.jl"))
 include(conversion_file)
 
 @testset "conversion.jl" begin
