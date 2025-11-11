@@ -149,4 +149,35 @@ import T4APartitionedMPSs:
         @test Set(Iterators.flatten(ITensors.siteinds(Ψreconst_x3prime_yprime))) ==
             Set(union(ITensors.prime.(sitesx, 3), ITensors.prime.(sitesy, 1)))
     end
+
+    @testset "siteinds" begin
+        Random.seed!(1234)
+        N = 3
+        sitesx = [Index(2, "x=$n") for n in 1:N]
+        sitesy = [Index(2, "y=$n") for n in 1:N]
+
+        sites = collect(collect.(zip(sitesx, sitesy)))
+
+        Ψ_mps = _random_mpo(sites)
+        Ψ = Ψ_mps
+
+        prjΨ = SubDomainMPS(Ψ)
+
+        prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
+        prjΨ2 = project(prjΨ, Dict(sitesx[1] => 2))
+
+        Ψreconst = PartitionedMPS(prjΨ1) + PartitionedMPS(prjΨ2)
+
+        # Test that siteinds(PartitionedMPS) returns the same as siteinds(SubDomainMPS)
+        @test siteinds(Ψreconst) == siteinds(prjΨ1)
+        @test siteinds(Ψreconst) == siteinds(prjΨ2)
+
+        # Test that siteinds(PartitionedMPS) matches ITensors.siteinds
+        @test siteinds(Ψreconst) == ITensors.siteinds(prjΨ1)
+        @test siteinds(PartitionedMPS(prjΨ1)) == siteinds(prjΨ1)
+
+        # Test with single SubDomainMPS
+        partmps_single = PartitionedMPS(prjΨ1)
+        @test siteinds(partmps_single) == siteinds(prjΨ1)
+    end
 end

@@ -49,6 +49,8 @@ function siteindices(obj::PartitionedMPS)
     return [Set(x) for x in ITensors.siteinds(first(values(obj.data)))]
 end
 
+siteinds(obj::PartitionedMPS) = siteinds(first(values(obj.data)))
+
 ITensors.siteinds(obj::PartitionedMPS) = siteindices(obj)
 
 """
