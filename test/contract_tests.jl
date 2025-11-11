@@ -3,8 +3,6 @@ import T4APartitionedMPSs:
     T4APartitionedMPSs, PartitionedMPS, Projector, project, SubDomainMPS, projcontract
 import T4AITensorCompat: TensorTrain, contract
 
-include("_util.jl")
-
 @testset "contract.jl" begin
     @testset "contract (xk-y-z)" begin
         R = 3

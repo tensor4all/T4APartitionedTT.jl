@@ -15,7 +15,6 @@ import T4APartitionedMPSs:
     makesitediagonal,
     extractdiagonal
 
-include("_util.jl")
 
 @testset "subdomainmps.jl" begin
     @testset "SubDomainMPS" begin

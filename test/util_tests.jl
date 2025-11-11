@@ -14,8 +14,6 @@ import T4APartitionedMPSs:
     makesitediagonal,
     extractdiagonal
 
-include("_util.jl")
-
 @testset "util.jl" begin
     @testset "rearrange_siteinds" begin
         N = 3

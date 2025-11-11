@@ -15,6 +15,7 @@ T4AITensorCompat = "864b39ca-388c-4f43-a593-a1076cf4b253"
 Distributed = "1"
 EllipsisNotation = "1"
 OrderedCollections = "1.6.3"
+T4AITensorCompat = "0.5.0"
 TensorCrossInterpolation = "0.9.18"
 
 [extras]

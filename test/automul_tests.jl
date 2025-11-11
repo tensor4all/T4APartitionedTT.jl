@@ -17,8 +17,6 @@ import T4APartitionedMPSs:
 
 import T4AITensorCompat: TensorTrain, MPS, MPO
 
-include("_util.jl")
-
 @testset "automul.jl" begin
     @testset "element-wise product" begin
         Random.seed!(1234)

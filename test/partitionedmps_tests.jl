@@ -8,8 +8,6 @@ import T4AITensorCompat: TensorTrain, MPS, MPO, siteinds
 import T4APartitionedMPSs:
     T4APartitionedMPSs, Projector, project, SubDomainMPS, PartitionedMPS, prime, noprime, dist, siteinds
 
-include("_util.jl")
-
 @testset "partitionedmps.jl" begin
     @testset "two blocks" begin
         Random.seed!(1234)

@@ -5,8 +5,6 @@ import T4AITensorCompat: TensorTrain
 using ITensors
 using Random
 
-include("_util.jl")
-
 @testset "patching.jl" begin
     @testset "adaptive_patching" begin
         Random.seed!(1234)
