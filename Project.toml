@@ -14,10 +14,8 @@ T4AITensorCompat = "864b39ca-388c-4f43-a593-a1076cf4b253"
 [compat]
 Distributed = "1"
 EllipsisNotation = "1"
-ITensors = "0.7, 0.8, 0.9"
 OrderedCollections = "1.6.3"
 TensorCrossInterpolation = "0.9.18"
-julia = "1.6"
 
 [extras]
 QuanticsGrids = "634c7f73-3e90-4749-a1bd-001b8efc642d"

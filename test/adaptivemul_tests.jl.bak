@@ -49,7 +49,7 @@ Random.seed!(1234)
         partΨ_l = PartitionedMPS(project.(Ref(MPS(collect(mpo_l))), proj_l))
         partΨ_r = PartitionedMPS(project.(Ref(MPS(collect(mpo_r))), proj_r))
 
-        part_normal = T4APartitionedMPSs.contract(partΨ_l, partΨ_r; cutoff=tol^2, alg="fit")
+        part_normal = PartitionedMPSs.contract(partΨ_l, partΨ_r; cutoff=tol^2, alg="fit")
         part_adaptive = adaptivecontract(
             partΨ_l, partΨ_r, pordering; cutoff=tol^2, maxdim=23
         )
@@ -114,7 +114,7 @@ Random.seed!(1234)
             part_mps_l, part_mps_r, pordering; cutoff=tol^2, maxdim=mb
         )
 
-        adaptive_mps = T4APartitionedMPSs.rearrange_siteinds(
+        adaptive_mps = PartitionedMPSs.rearrange_siteinds(
             MPS(part_adaptive), [[x] for x in final_sites]
         )
 

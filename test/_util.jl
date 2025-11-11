@@ -1,7 +1,6 @@
 using ITensors
 using Random
-import T4AITensorCompat: TensorTrain, MPS, MPO
-import ITensorMPS: random_mps
+import T4AITensorCompat: TensorTrain, MPS, MPO, random_mps
 
 function _random_mpo(
     rng::AbstractRNG, sites::AbstractVector{<:AbstractVector{Index{T}}}; linkdims::Int=1

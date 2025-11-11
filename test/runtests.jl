@@ -12,5 +12,5 @@ include("contract_tests.jl")
 include("patching_tests.jl")
 include("util_tests.jl")
 include("automul_tests.jl")
-include("bak/conversion_tests.jl")
-include("adaptivemul_tests.jl")
+# include("bak/conversion_tests.jl")  # bak directory was removed
+# include("adaptivemul_tests.jl")  # Disabled: depends on TCIAlgorithms and FMPOC
