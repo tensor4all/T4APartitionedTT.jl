@@ -1,8 +1,10 @@
 using Test
 
 using ITensors
-import PartitionedMPSs:
-    PartitionedMPSs,
+import T4AITensorCompat: TensorTrain, MPS, MPO
+
+import T4APartitionedMPSs:
+    T4APartitionedMPSs,
     Projector,
     project,
     SubDomainMPS,
@@ -11,7 +13,6 @@ import PartitionedMPSs:
     rearrange_siteinds,
     makesitediagonal,
     extractdiagonal
-import FastMPOContractions as FMPOC
 
 @testset "util.jl" begin
     @testset "rearrange_siteinds" begin
@@ -21,7 +22,8 @@ import FastMPOContractions as FMPOC
         sitesz = [Index(2, "z=$n") for n in 1:N]
         sites = collect(collect.(zip(sitesx, sitesy, sitesz)))
 
-        Ψ = MPS(collect(_random_mpo(sites)))
+        Ψ_mps = _random_mpo(sites)
+        Ψ = Ψ_mps
 
         prjΨ = SubDomainMPS(Ψ)
         prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
@@ -34,7 +36,7 @@ import FastMPOContractions as FMPOC
         end
         prjΨ1_rearranged = rearrange_siteinds(prjΨ1, sites_rearranged)
 
-        @test reduce(*, MPS(prjΨ1)) ≈ reduce(*, MPS(prjΨ1_rearranged))
-        @test PartitionedMPSs.siteinds(prjΨ1_rearranged) == sites_rearranged
+        @test reduce(*, TensorTrain(prjΨ1)) ≈ reduce(*, TensorTrain(prjΨ1_rearranged))
+        @test T4APartitionedMPSs.siteinds(prjΨ1_rearranged) == sites_rearranged
     end
 end

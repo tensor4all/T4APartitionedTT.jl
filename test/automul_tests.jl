@@ -2,10 +2,9 @@ using Test
 
 using Random
 using ITensors
-using ITensorMPS
 
-import PartitionedMPSs:
-    PartitionedMPSs,
+import T4APartitionedMPSs:
+    T4APartitionedMPSs,
     PartitionedMPS,
     SubDomainMPS,
     makesitediagonal,
@@ -16,7 +15,7 @@ import PartitionedMPSs:
     default_cutoff,
     rearrange_siteinds
 
-import FastMPOContractions as FMPOC
+import T4AITensorCompat: TensorTrain, MPS, MPO
 
 @testset "automul.jl" begin
     @testset "element-wise product" begin
@@ -28,7 +27,7 @@ import FastMPOContractions as FMPOC
         sites = [Index(d, "Qubit, n=$n") for n in 1:N]
         sites_vec = [[x] for x in sites]
 
-        Ψ = ITensorMPS.convert(MPS, _random_mpo(sites_vec; linkdims=L))
+        Ψ = _random_mpo(sites_vec; linkdims=L)
         dummy_subdmps = SubDomainMPS(Ψ)
 
         proj_lev_l = 2 # Max projected index left tensor 
@@ -51,7 +50,7 @@ import FastMPOContractions as FMPOC
         diag_dummy_r = makesitediagonal(dummy_subdmps, sites; baseplev=0)
 
         elemmul_dummy = extractdiagonal(
-            PartitionedMPSs.contract(diag_dummy_l, diag_dummy_r; alg="zipup"), sites
+            T4APartitionedMPSs.contract(diag_dummy_l, diag_dummy_r; alg="zipup"), sites
         )
 
         element_prod = elemmul(partΨ_l, partΨ_r)
@@ -80,8 +79,8 @@ import FastMPOContractions as FMPOC
         sites_nl = collect(Iterators.flatten(collect.(zip(sites_n, sites_l))))
         final_sites = collect(Iterators.flatten(collect.(zip(sites_m, sites_l))))
 
-        Ψ_l = ITensorMPS.convert(MPS, _random_mpo([[x] for x in sites_mn]; linkdims=L))
-        Ψ_r = ITensorMPS.convert(MPS, _random_mpo([[x] for x in sites_nl]; linkdims=L))
+        Ψ_l = _random_mpo([[x] for x in sites_mn]; linkdims=L)
+        Ψ_r = _random_mpo([[x] for x in sites_nl]; linkdims=L)
 
         proj_lev_l = 4
         proj_lev_r = 6
@@ -107,13 +106,11 @@ import FastMPOContractions as FMPOC
         sites_mn_vec = collect(collect.(zip(sites_m, sites_n)))
         sites_nl_vec = collect(collect.(zip(sites_n, sites_l)))
 
-        mpo_l = MPO(collect(rearrange_siteinds(Ψ_l, sites_mn_vec)))
-        mpo_r = MPO(collect(rearrange_siteinds(Ψ_r, sites_nl_vec)))
+        mpo_l = rearrange_siteinds(Ψ_l, sites_mn_vec)
+        mpo_r = rearrange_siteinds(Ψ_r, sites_nl_vec)
 
-        naive_matmul = FMPOC.contract_mpo_mpo(mpo_l, mpo_r; alg="naive")
-        mps_naive_matmul = rearrange_siteinds(
-            ITensorMPS.convert(MPS, naive_matmul), [[x] for x in final_sites]
-        )
+        naive_matmul = T4APartitionedMPSs.contract(mpo_l, mpo_r; alg="naive")
+        mps_naive_matmul = rearrange_siteinds(naive_matmul, [[x] for x in final_sites])
 
         @test mps_matmul ≈ mps_naive_matmul
 

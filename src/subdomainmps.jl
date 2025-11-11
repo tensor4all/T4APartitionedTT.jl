@@ -2,27 +2,29 @@
 An MPS with a projector.
 """
 struct SubDomainMPS
-    data::MPS
+    data::TensorTrain
     projector::Projector
 
-    function SubDomainMPS(data::AbstractMPS, projector::Projector)
+    function SubDomainMPS(data::TensorTrain, projector::Projector)
         _iscompatible(projector, data) || error(
             "Incompatible projector and data. Even small numerical noise can cause this error.",
         )
         projector = _trim_projector(data, projector)
-        return new(MPS([x for x in data]), projector)
+        return new(TensorTrain([x for x in data]), projector)
     end
 end
 
-siteinds(obj::SubDomainMPS) = collect(ITensors.siteinds(MPO([x for x in obj.data])))
+siteinds(obj::SubDomainMPS) = siteinds(obj.data)
 
-_allsites(Ψ::AbstractMPS) = collect(Iterators.flatten(ITensors.siteinds(MPO(collect(Ψ)))))
+ITensors.siteinds(obj::SubDomainMPS) = siteinds(obj.data)
+
+_allsites(Ψ::TensorTrain) = collect(Iterators.flatten(siteinds(Ψ)))
 _allsites(Ψ::SubDomainMPS) = _allsites(Ψ.data)
 
-maxlinkdim(Ψ::SubDomainMPS) = ITensorMPS.maxlinkdim(Ψ.data)
-maxbonddim(Ψ::SubDomainMPS) = ITensorMPS.maxlinkdim(Ψ.data)
+maxlinkdim(Ψ::SubDomainMPS) = maxlinkdim(Ψ.data)
+maxbonddim(Ψ::SubDomainMPS) = maxlinkdim(Ψ.data)
 
-function _trim_projector(obj::AbstractMPS, projector)
+function _trim_projector(obj::TensorTrain, projector)
     sites = Set(_allsites(obj))
     newprj = deepcopy(projector)
     for (k, v) in newprj.data
@@ -33,12 +35,13 @@ function _trim_projector(obj::AbstractMPS, projector)
     return newprj
 end
 
-function SubDomainMPS(Ψ::AbstractMPS)
+function SubDomainMPS(Ψ::TensorTrain)
     return SubDomainMPS(Ψ, Projector())
 end
 
 # Conversion Functions
-ITensorMPS.MPS(projΨ::SubDomainMPS) = projΨ.data
+# Conversion to TensorTrain
+TensorTrain(projΨ::SubDomainMPS) = projΨ.data
 
 function project(tensor::ITensor, projector::Projector)
     slice = Union{Int,Colon}[
@@ -61,7 +64,8 @@ function project(projΨ::SubDomainMPS, projector::Projector)::Union{Nothing,SubD
     end
 
     return SubDomainMPS(
-        MPS([project(projΨ.data[n], projector) for n in 1:length(projΨ.data)]), projector
+        TensorTrain([project(projΨ.data[n], projector) for n in 1:length(projΨ.data)]),
+        projector,
     )
 end
 
@@ -72,12 +76,12 @@ function project(
 end
 
 function project(
-    Ψ::AbstractMPS, pairs::Vararg{Pair{Index{T},Int}}
+    Ψ::TensorTrain, pairs::Vararg{Pair{Index{T},Int}}
 )::Union{Nothing,SubDomainMPS} where {T}
     return project(Ψ, Projector(pairs...))
 end
 
-function project(Ψ::AbstractMPS, projector::Projector)::Union{Nothing,SubDomainMPS}
+function project(Ψ::TensorTrain, projector::Projector)::Union{Nothing,SubDomainMPS}
     return project(SubDomainMPS(Ψ), projector)
 end
 
@@ -88,7 +92,7 @@ function project(
 end
 
 function project(
-    Ψ::AbstractMPS, projector::Dict{InsT,Int}
+    Ψ::TensorTrain, projector::Dict{InsT,Int}
 )::Union{Nothing,SubDomainMPS} where {InsT}
     return project(SubDomainMPS(Ψ), Projector(projector))
 end
@@ -98,13 +102,13 @@ function _iscompatible(projector::Projector, tensor::ITensor)
     return ITensors.norm(project(tensor, projector) - tensor) == 0.0
 end
 
-function _iscompatible(projector::Projector, Ψ::AbstractMPS)
+function _iscompatible(projector::Projector, Ψ::TensorTrain)
     return all((_iscompatible(projector, x) for x in Ψ))
 end
 
 function rearrange_siteinds(subdmps::SubDomainMPS, sites)
-    mps_rearranged = rearrange_siteinds(MPS(subdmps), sites)
-    return project(SubDomainMPS(mps_rearranged), subdmps.projector)
+    tt_rearranged = rearrange_siteinds(TensorTrain(subdmps), sites)
+    return project(SubDomainMPS(tt_rearranged), subdmps.projector)
 end
 
 # Miscellaneous Functions
@@ -114,8 +118,8 @@ end
 
 function prime(Ψ::SubDomainMPS, plinc=1; kwargs...)
     return SubDomainMPS(
-        ITensors.prime(MPS(Ψ), plinc; kwargs...),
-        PartitionedMPSs.prime(Ψ.projector, plinc; kwargs...),
+        ITensors.prime(TensorTrain(Ψ), plinc; kwargs...),
+        T4APartitionedMPSs.prime(Ψ.projector, plinc; kwargs...),
     )
 end
 
@@ -127,8 +131,8 @@ function noprime(Ψ::SubDomainMPS, args...; kwargs...)
     end
 
     return SubDomainMPS(
-        ITensors.noprime(MPS(Ψ), args...; kwargs...),
-        PartitionedMPSs.noprime(Ψ.projector; targetsites),
+        ITensors.noprime(TensorTrain(Ψ), args...; kwargs...),
+        T4APartitionedMPSs.noprime(Ψ.projector; targetsites),
     )
 end
 
@@ -149,13 +153,15 @@ function _fitsum(
     if !(:nsweeps ∈ keys(kwargs))
         kwargs = merge(Dict(kwargs), Dict(:nsweeps => 1))
     end
-    Ψs = [MPS(collect(x)) for x in input_states]
-    init_Ψ = MPS(collect(init))
-    res = FMPOC.fit(Ψs, init_Ψ; coeffs=coeffs, kwargs...)
-    return T(collect(res))
+    # input_states and init are already TensorTrain, so we can use them directly
+    Ψs = [x for x in input_states]  # Already TensorTrain, no need to convert
+    init_Ψ = init  # Already TensorTrain, no need to convert
+    res = fit(Ψs, init_Ψ; coeffs=coeffs, kwargs...)
+    # res is already TensorTrain, so we can return it directly
+    return res
 end
 
-function _add(ψ::AbstractMPS...; alg="fit", cutoff=1e-15, maxdim=typemax(Int), kwargs...)
+function _add(ψ::TensorTrain...; alg="fit", cutoff=1e-15, maxdim=typemax(Int), kwargs...)
     if alg == "directsum"
         return +(ITensors.Algorithm(alg), ψ...)
     elseif alg == "densitymatrix"
@@ -167,12 +173,12 @@ function _add(ψ::AbstractMPS...; alg="fit", cutoff=1e-15, maxdim=typemax(Int), 
         return +(ITensors.Algorithm("densitymatrix"), ψ...; cutoff, maxdim, kwargs...)
     elseif alg == "fit"
         function f(x, y)
-            return ITensors.truncate(
+            return T4AITensorCompat.truncate(
                 +(ITensors.Algorithm("directsum"), x, y); cutoff, maxdim, kwargs...
             )
         end
         res_dm = reduce(f, ψ)
-        res = _fitsum(collect(ψ), res_dm; cutoff, maxdim, kwargs...)
+        res = _fitsum([x for x in ψ], res_dm; cutoff, maxdim, kwargs...)
         return res
     else
         error("Unknown algorithm $(alg) for addition!")
@@ -207,25 +213,19 @@ function Base.:-(obj::SubDomainMPS)::SubDomainMPS
 end
 
 function truncate(obj::SubDomainMPS; kwargs...)::SubDomainMPS
-    return project(SubDomainMPS(ITensors.truncate(obj.data; kwargs...)), obj.projector)
-end
-
-function _norm(M::AbstractMPS)
-    if ITensorMPS.isortho(M)
-        return ITensors.norm(M[orthocenter(M)])
-    end
-    norm2_M = ITensors.dot(M, M)
-    return sqrt(abs(norm2_M))
+    return project(
+        SubDomainMPS(T4AITensorCompat.truncate(obj.data; kwargs...)), obj.projector
+    )
 end
 
 function LinearAlgebra.norm(M::SubDomainMPS)
-    return _norm(MPS(M))
+    return LinearAlgebra.norm(TensorTrain(M))
 end
 
 function _makesitediagonal(
     obj::SubDomainMPS, sites::AbstractVector{Index{IndsT}}; baseplev=0
 ) where {IndsT}
-    M_ = deepcopy(MPO(collect(MPS(obj))))
+    M_ = deepcopy(TensorTrain(obj))
     for site in sites
         target_site::Int = only(findsites(M_, site))
         M_[target_site] = _asdiagonal(M_[target_site], site; baseplev=baseplev)
@@ -256,8 +256,8 @@ function makesitediagonal(
 end
 
 function makesitediagonal(obj::SubDomainMPS, tag::String)
-    mps_diagonal = makesitediagonal(MPS(obj), tag)
-    SubDomainMPS_diagonal = SubDomainMPS(mps_diagonal)
+    tt_diagonal = makesitediagonal(TensorTrain(obj), tag)
+    SubDomainMPS_diagonal = SubDomainMPS(tt_diagonal)
 
     target_sites = findallsiteinds_by_tag(
         unique(ITensors.noprime.(Iterators.flatten(siteinds(obj)))); tag=tag
@@ -276,7 +276,7 @@ end
 function extractdiagonal(
     obj::SubDomainMPS, sites::AbstractVector{Index{IndsT}}
 ) where {IndsT}
-    tensors = collect(obj.data)
+    tensors = Vector{ITensor}(collect(obj.data))
     for i in eachindex(tensors)
         for site in intersect(sites, ITensors.inds(tensors[i]))
             sitewithallplevs = _find_site_allplevs(tensors[i], site)
@@ -294,7 +294,7 @@ function extractdiagonal(
         newk = ITensors.noprime(k)
         newD[newk] = v
     end
-    return SubDomainMPS(MPS(tensors), Projector(newD))
+    return SubDomainMPS(TensorTrain(tensors), Projector(newD))
 end
 
 function extractdiagonal(obj::SubDomainMPS, tag::String)::SubDomainMPS

@@ -1,11 +1,13 @@
 using Test
 
 using ITensors
-
 using Random
+using LinearAlgebra
 
-import PartitionedMPSs:
-    PartitionedMPSs,
+import T4AITensorCompat: TensorTrain, MPS, MPO
+
+import T4APartitionedMPSs:
+    T4APartitionedMPSs,
     Projector,
     project,
     SubDomainMPS,
@@ -20,17 +22,18 @@ import PartitionedMPSs:
         sitesx = [Index(2, "x=$n") for n in 1:N]
         sitesy = [Index(2, "y=$n") for n in 1:N]
         sites = collect(collect.(zip(sitesx, sitesy)))
-        Ψ = MPS(collect(_random_mpo(sites)))
+        Ψ_mps = _random_mpo(sites)
+        Ψ = Ψ_mps
         prjΨ = SubDomainMPS(Ψ)
 
         prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
         prjΨ2 = project(prjΨ, Dict(sitesx[1] => 2))
 
-        Ψreconst = MPS(prjΨ1) + MPS(prjΨ2)
+        Ψreconst = TensorTrain(prjΨ1) + TensorTrain(prjΨ2)
 
-        @test ITensors.norm(prjΨ1) ≈ ITensors.norm(MPS(prjΨ1))
+        @test LinearAlgebra.norm(prjΨ1) ≈ LinearAlgebra.norm(TensorTrain(prjΨ1))
 
-        @test Ψreconst ≈ Ψ
+        @test isapprox(Ψreconst, Ψ)
     end
 
     @testset "rearrange_siteinds" begin
@@ -40,7 +43,8 @@ import PartitionedMPSs:
         sitesz = [Index(2, "z=$n") for n in 1:N]
         sites = collect(collect.(zip(sitesx, sitesy, sitesz)))
 
-        Ψ = MPS(collect(_random_mpo(sites)))
+        Ψ_mps = _random_mpo(sites)
+        Ψ = Ψ_mps
 
         prjΨ = SubDomainMPS(Ψ)
         prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
@@ -53,8 +57,8 @@ import PartitionedMPSs:
         end
         prjΨ1_rearranged = rearrange_siteinds(prjΨ1, sites_rearranged)
 
-        @test reduce(*, MPS(prjΨ1)) ≈ reduce(*, MPS(prjΨ1_rearranged))
-        @test PartitionedMPSs.siteinds(prjΨ1_rearranged) == sites_rearranged
+        @test reduce(*, TensorTrain(prjΨ1)) ≈ reduce(*, TensorTrain(prjΨ1_rearranged))
+        @test T4APartitionedMPSs.siteinds(prjΨ1_rearranged) == sites_rearranged
     end
 
     @testset "makesitediagonal and extractdiagonal" begin
@@ -67,13 +71,14 @@ import PartitionedMPSs:
         sitesz_vec = [[z] for z in sitesz]
         sites = [x for pair in zip(sitesxy_vec, sitesz_vec) for x in pair]
 
-        Ψ = MPS(collect(_random_mpo(sites)))
+        Ψ_mps = _random_mpo(sites)
+        Ψ = Ψ_mps
 
         prjΨ = SubDomainMPS(Ψ)
         prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
 
         prjΨ1_diagonalz = makesitediagonal(prjΨ1, "y")
-        sites_diagonalz = Iterators.flatten(siteinds(prjΨ1_diagonalz))
+        sites_diagonalz = Iterators.flatten(T4APartitionedMPSs.siteinds(prjΨ1_diagonalz))
 
         psi_diag = prod(prjΨ1_diagonalz.data)
         psi = prod(prjΨ1.data)

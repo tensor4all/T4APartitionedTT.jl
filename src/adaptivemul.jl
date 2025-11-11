@@ -42,7 +42,7 @@ function project(obj::LazyContraction, prj::Projector; kwargs...)::LazyContracti
     return LazyContraction(new_a, new_b)
 end
 
-# Preprocessing of the patches to obtain all the contraction tasks from two PartitionedMPSs
+# Preprocessing of the patches to obtain all the contraction tasks from two T4APartitionedMPSs
 function _adaptivecontraction_tasks(
     M1::PartitionedMPS, M2::PartitionedMPS
 )::Dict{Projector,Vector{Union{SubDomainMPS,LazyContraction}}}

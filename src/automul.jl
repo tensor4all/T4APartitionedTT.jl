@@ -21,12 +21,14 @@ function elemmul(
     cutoff=1e-25,
     kwargs...,
 )
-    all(length.(siteinds(M1)) .== 1) || error("M1 should have only 1 site index per site")
-    all(length.(siteinds(M2)) .== 1) || error("M2 should have only 1 site index per site")
+    all(length.(ITensors.siteinds(M1)) .== 1) ||
+        error("M1 should have only 1 site index per site")
+    all(length.(ITensors.siteinds(M2)) .== 1) ||
+        error("M2 should have only 1 site index per site")
 
-    only.(siteinds(M1)) == only.(siteinds(M2)) ||
+    only.(ITensors.siteinds(M1)) == only.(ITensors.siteinds(M2)) ||
         error("Sites for element wise multiplication should be identical")
-    sites_ewmul = only.(siteinds(M1))
+    sites_ewmul = only.(ITensors.siteinds(M1))
 
     M1 = makesitediagonal(M1, sites_ewmul; baseplev=1)
     M2 = makesitediagonal(M2, sites_ewmul; baseplev=0)
@@ -35,7 +37,7 @@ function elemmul(
 
     M = extractdiagonal(M, sites_ewmul)
 
-    return truncate(M; cutoff=cutoff, maxdim=maxdim)
+    return T4AITensorCompat.truncate(M; cutoff=cutoff, maxdim=maxdim)
 end
 
 @doc raw"""
@@ -69,24 +71,26 @@ function automul(
     cutoff=1e-25,
     kwargs...,
 )
-    all(length.(siteinds(M1)) .== 1) || error("M1 should have only 1 site index per site")
-    all(length.(siteinds(M2)) .== 1) || error("M2 should have only 1 site index per site")
+    all(length.(ITensors.siteinds(M1)) .== 1) ||
+        error("M1 should have only 1 site index per site")
+    all(length.(ITensors.siteinds(M2)) .== 1) ||
+        error("M2 should have only 1 site index per site")
 
     sites_row = _findallsiteinds_by_tag(M1; tag=tag_row)
     sites_shared = _findallsiteinds_by_tag(M1; tag=tag_shared)
     sites_col = _findallsiteinds_by_tag(M2; tag=tag_col)
     sites_matmul = Set(Iterators.flatten([sites_row, sites_shared, sites_col]))
 
-    sites1 = only.(siteinds(M1))
-    sites1_ewmul = setdiff(only.(siteinds(M1)), sites_matmul)
-    sites2_ewmul = setdiff(only.(siteinds(M2)), sites_matmul)
+    sites1 = only.(ITensors.siteinds(M1))
+    sites1_ewmul = setdiff(only.(ITensors.siteinds(M1)), sites_matmul)
+    sites2_ewmul = setdiff(only.(ITensors.siteinds(M2)), sites_matmul)
     sites2_ewmul == sites1_ewmul || error("Invalid sites for elementwise multiplication")
 
     M1 = makesitediagonal(M1, sites1_ewmul; baseplev=1)
     M2 = makesitediagonal(M2, sites2_ewmul; baseplev=0)
 
-    sites_M1_diag = [collect(x) for x in siteinds(M1)]
-    sites_M2_diag = [collect(x) for x in siteinds(M2)]
+    sites_M1_diag = [collect(x) for x in ITensors.siteinds(M1)]
+    sites_M2_diag = [collect(x) for x in ITensors.siteinds(M2)]
 
     M1 = rearrange_siteinds(M1, combinesites(sites_M1_diag, sites_row, sites_shared))
 
@@ -96,8 +100,8 @@ function automul(
 
     M = extractdiagonal(M, sites1_ewmul)
 
-    ressites = Vector{eltype(siteinds(M1)[1])}[]
-    for s in siteinds(M)
+    ressites = Vector{eltype(ITensors.siteinds(M1)[1])}[]
+    for s in ITensors.siteinds(M)
         s_ = unique(ITensors.noprime.(s))
         if length(s_) == 1
             push!(ressites, s_)

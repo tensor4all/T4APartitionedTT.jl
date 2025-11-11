@@ -1,11 +1,20 @@
 using Test
 
 using ITensors
-using ITensorMPS
 using Random
 
-import PartitionedMPSs:
-    PartitionedMPSs, Projector, project, SubDomainMPS, PartitionedMPS, prime, noprime
+import T4AITensorCompat: TensorTrain, MPS, MPO, siteinds
+
+import T4APartitionedMPSs:
+    T4APartitionedMPSs,
+    Projector,
+    project,
+    SubDomainMPS,
+    PartitionedMPS,
+    prime,
+    noprime,
+    dist,
+    siteinds
 
 @testset "partitionedmps.jl" begin
     @testset "two blocks" begin
@@ -16,7 +25,8 @@ import PartitionedMPSs:
 
         sites = collect(collect.(zip(sitesx, sitesy)))
 
-        Ψ = MPS(collect(_random_mpo(sites)))
+        Ψ_mps = _random_mpo(sites)
+        Ψ = Ψ_mps
 
         prjΨ = SubDomainMPS(Ψ)
 
@@ -33,13 +43,13 @@ import PartitionedMPSs:
         Ψreconst = PartitionedMPS(prjΨ1) + PartitionedMPS(prjΨ2)
         @test Ψreconst[Projector(sitesx[1] => 1)] ≈ prjΨ1
         @test Ψreconst[Projector(sitesx[1] => 2)] ≈ prjΨ2
-        @test MPS(Ψreconst) ≈ Ψ
-        @test ITensors.norm(Ψreconst) ≈ ITensors.norm(MPS(Ψreconst))
+        @test TensorTrain(Ψreconst) ≈ Ψ
+        @test ITensors.norm(Ψreconst) ≈ ITensors.norm(TensorTrain(Ψreconst))
 
         # Summation
         coeffs = (1.1, 0.9)
-        @test MPS(+(PartitionedMPS(prjΨ1), PartitionedMPS(prjΨ2); coeffs=coeffs)) ≈
-            coeffs[1] * MPS(prjΨ1) + coeffs[2] * MPS(prjΨ2)
+        @test TensorTrain(+(PartitionedMPS(prjΨ1), PartitionedMPS(prjΨ2); coeffs=coeffs)) ≈
+            coeffs[1] * TensorTrain(prjΨ1) + coeffs[2] * TensorTrain(prjΨ2)
     end
 
     @testset "two blocks (general key)" begin
@@ -50,7 +60,8 @@ import PartitionedMPSs:
 
         sites = collect(collect.(zip(sitesx, sitesy)))
 
-        Ψ = MPS(collect(_random_mpo(sites)))
+        Ψ_mps = _random_mpo(sites)
+        Ψ = Ψ_mps
 
         prjΨ = SubDomainMPS(Ψ)
 
@@ -60,10 +71,10 @@ import PartitionedMPSs:
         a = PartitionedMPS(prjΨ1)
         b = PartitionedMPS(prjΨ2)
 
-        @test MPS(2 * a) ≈ 2 * MPS(a) rtol = 1e-13
-        @test MPS(a * 2) ≈ 2 * MPS(a) rtol = 1e-13
-        @test MPS((a + b) + 2 * (b + a)) ≈ 3 * Ψ rtol = 1e-13
-        @test MPS((a + b) + 2 * (b + a)) ≈ 3 * Ψ rtol = 1e-13
+        @test TensorTrain(2 * a) ≈ 2 * TensorTrain(a) rtol = 1e-13
+        @test TensorTrain(a * 2) ≈ 2 * TensorTrain(a) rtol = 1e-13
+        @test TensorTrain((a + b) + 2 * (b + a)) ≈ 3 * Ψ rtol = 1e-13
+        @test TensorTrain((a + b) + 2 * (b + a)) ≈ 3 * Ψ rtol = 1e-13
     end
 
     @testset "add" begin
@@ -71,13 +82,15 @@ import PartitionedMPSs:
         N = 3
         d = 10
         sites = [Index(d, "x=$n") for n in 1:N]
-        Ψ = MPS(collect(_random_mpo([[s] for s in sites])))
+        Ψ_mps = _random_mpo([[s] for s in sites])
+        Ψ = Ψ_mps
 
         projectors = [Projector(sites[1] => d_) for d_ in 1:d]
         coeffs = rand(length(projectors))
         prjΨs = [project(Ψ, p) for p in projectors]
 
-        @test MPS(+([PartitionedMPS(x) for x in prjΨs]...; coeffs=coeffs)) ≈ +([c * MPS(x) for (c, x) in zip(coeffs, prjΨs)]...; alg="directsum")
+        @test TensorTrain(+([PartitionedMPS(x) for x in prjΨs]...; coeffs=coeffs)) ≈
+            +([c * TensorTrain(x) for (c, x) in zip(coeffs, prjΨs)]...; alg="directsum")
     end
 
     @testset "truncate" begin
@@ -90,14 +103,15 @@ import PartitionedMPSs:
 
             sites = [[Index(d, "n=$n")] for n in 1:N]
 
-            Ψ = 100 * MPS(collect(_random_mpo(sites; linkdims=D)))
+            Ψ_mps = 100 * _random_mpo(sites; linkdims=D)
+            Ψ = Ψ_mps
 
             partmps = PartitionedMPS([project(Ψ, Dict(sites[1][1] => d_)) for d_ in 1:d])
-            partmps_truncated = PartitionedMPSs.truncate(partmps; cutoff=cutoff_global)
+            partmps_truncated = T4APartitionedMPSs.truncate(partmps; cutoff=cutoff_global)
 
             diff =
-                ITensorMPS.dist(MPS(partmps_truncated), MPS(partmps))^2 /
-                ITensorMPS.norm(MPS(partmps))^2
+                dist(TensorTrain(partmps_truncated), TensorTrain(partmps))^2 /
+                norm(TensorTrain(partmps))^2
             @test diff < cutoff_global
         end
     end
@@ -110,7 +124,8 @@ import PartitionedMPSs:
 
         sites = collect(collect.(zip(sitesx, sitesy)))
 
-        Ψ = MPS(collect(_random_mpo(sites)))
+        Ψ_mps = _random_mpo(sites)
+        Ψ = Ψ_mps
 
         prjΨ = SubDomainMPS(Ψ)
 
@@ -121,7 +136,7 @@ import PartitionedMPSs:
 
         Ψreconst_x3prime = prime(Ψreconst, 3; inds=sitesx)
 
-        @test Set(Iterators.flatten(siteinds(Ψreconst_x3prime))) ==
+        @test Set(Iterators.flatten(ITensors.siteinds(Ψreconst_x3prime))) ==
             Set(union(ITensors.prime.(sitesx, 3), sitesy))
 
         @test Set(keys(Ψreconst_x3prime)) == Set([
@@ -131,7 +146,7 @@ import PartitionedMPSs:
 
         Ψreconst_x3prime_yprime = prime(Ψreconst_x3prime; plev=0)
 
-        @test Set(Iterators.flatten(siteinds(Ψreconst_x3prime_yprime))) ==
+        @test Set(Iterators.flatten(ITensors.siteinds(Ψreconst_x3prime_yprime))) ==
             Set(union(ITensors.prime.(sitesx, 3), ITensors.prime.(sitesy, 1)))
     end
 end

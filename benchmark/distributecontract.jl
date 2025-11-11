@@ -8,7 +8,7 @@ if nworkers > nprocs() - 1
     addprocs(nworkers)
 end
 
-library_dir = normpath(joinpath(dirname(pathof(PartitionedMPSs))))
+library_dir = normpath(joinpath(dirname(pathof(T4APartitionedMPSs))))
 
 @everywhere begin
     using Pkg
@@ -18,8 +18,8 @@ library_dir = normpath(joinpath(dirname(pathof(PartitionedMPSs))))
 end
 
 @everywhere begin
-    import PartitionedMPSs:
-        PartitionedMPSs,
+    import T4APartitionedMPSs:
+        T4APartitionedMPSs,
         contract,
         PartitionedMPS,
         SubDomainMPS,
@@ -29,9 +29,12 @@ end
         projcontract
 end
 
-using ITensors, ITensorMPS
+using ITensors
+import T4AITensorCompat: TensorTrain, MPS, MPO
 
-random_mpo_file = normpath(joinpath(dirname(pathof(PartitionedMPSs)), "../test/_util.jl"))
+random_mpo_file = normpath(
+    joinpath(dirname(pathof(T4APartitionedMPSs)), "../test/_util.jl")
+)
 
 Random.seed!(1234)
 R = 10
@@ -48,8 +51,8 @@ sites_sy = collect(collect.(zip(sites_s, sites_y)))
 sites_xs_flat = collect(Iterators.flatten(sites_xs))
 sites_sy_flat = collect(Iterators.flatten(sites_sy))
 
-Ψ_l = ITensorMPS.convert(MPS, _random_mpo(sites_xs; linkdims=L))
-Ψ_r = ITensorMPS.convert(MPS, _random_mpo(sites_sy; linkdims=L))
+Ψ_l = TensorTrain(_random_mpo(sites_xs; linkdims=L))
+Ψ_r = TensorTrain(_random_mpo(sites_sy; linkdims=L))
 
 proj_lev_l = 4
 proj_l = vec([
