@@ -1,6 +1,6 @@
 using Test
 using ITensors
-import T4APartitionedMPSs: Projector, hasoverlap
+import T4APartitionedTT: Projector, hasoverlap
 
 @testset "Projector" begin
     @testset "constructor" begin

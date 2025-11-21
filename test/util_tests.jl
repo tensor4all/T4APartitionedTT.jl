@@ -3,13 +3,13 @@ using Test
 using ITensors
 import T4AITensorCompat: TensorTrain, MPS, MPO
 
-import T4APartitionedMPSs:
-    T4APartitionedMPSs,
+import T4APartitionedTT:
+    T4APartitionedTT,
     Projector,
     project,
-    SubDomainMPS,
+    SubDomainTT,
     projcontract,
-    PartitionedMPS,
+    PartitionedTT,
     rearrange_siteinds,
     makesitediagonal,
     extractdiagonal
@@ -25,7 +25,7 @@ import T4APartitionedMPSs:
         Ψ_mps = _random_mpo(sites)
         Ψ = Ψ_mps
 
-        prjΨ = SubDomainMPS(Ψ)
+        prjΨ = SubDomainTT(Ψ)
         prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
 
         sitesxy = collect(collect.(zip(sitesx, sitesy)))
@@ -37,6 +37,6 @@ import T4APartitionedMPSs:
         prjΨ1_rearranged = rearrange_siteinds(prjΨ1, sites_rearranged)
 
         @test reduce(*, TensorTrain(prjΨ1)) ≈ reduce(*, TensorTrain(prjΨ1_rearranged))
-        @test T4APartitionedMPSs.siteinds(prjΨ1_rearranged) == sites_rearranged
+        @test T4APartitionedTT.siteinds(prjΨ1_rearranged) == sites_rearranged
     end
 end

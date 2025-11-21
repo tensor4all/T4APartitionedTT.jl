@@ -1,5 +1,5 @@
-name = "T4APartitionedMPSs"
-uuid = "f7a3e09c-877e-4116-af24-45397c1413c2"
+name = "T4APartitionedTT"
+uuid = "7ada5264-53d5-494a-9572-4199565888e0"
 authors = ["Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors"]
 version = "0.7.3"
 
@@ -16,7 +16,7 @@ Distributed = "1"
 EllipsisNotation = "1"
 OrderedCollections = "1.6.3"
 TensorCrossInterpolation = "0.9.18"
-T4AITensorCompat = "0.6.0"
+T4AITensorCompat = "0.8"
 
 [extras]
 QuanticsGrids = "634c7f73-3e90-4749-a1bd-001b8efc642d"
