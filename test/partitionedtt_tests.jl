@@ -206,7 +206,7 @@ include("_util.jl")
         all_sites_flat = collect(Iterators.flatten(sites))
         multiindex1 = [1, 1, 1, 1, 1, 1]  # [x1=1, y1=1, x2=1, y2=1, x3=1, y3=1]
         result1 = parttt(multiindex1)
-        
+
         # Should match evaluation of prjΨ1 using function call directly
         expected1 = prjΨ1(multiindex1, all_sites_flat)
         @test result1 ≈ expected1
@@ -214,7 +214,7 @@ include("_util.jl")
         # Test with prjΨ2 (sitesx[1] => 2)
         multiindex2 = [2, 1, 1, 1, 1, 1]  # [x1=2, y1=1, x2=1, y2=1, x3=1, y3=1]
         result2 = parttt(multiindex2)
-        
+
         expected2 = prjΨ2(multiindex2, all_sites_flat)
         @test result2 ≈ expected2
 
@@ -225,29 +225,29 @@ include("_util.jl")
         # Test error when no matching SubDomainTT is found
         # Create a PartitionedTT with only prjΨ1 (sitesx[1] => 1)
         parttt_single = PartitionedTT(prjΨ1)
-        
+
         # Try to evaluate with sitesx[1] = 2, which doesn't match prjΨ1
         multiindex_no_match = [2, 1, 1, 1, 1, 1]  # [x1=2, ...] but prjΨ1 requires x1=1
         @test_throws ArgumentError parttt_single(multiindex_no_match)
-        
+
         # Test with a more complex case: multiple projectors
         prjΨ3 = project(prjΨ, Dict(sitesx[1] => 1, sitesx[2] => 1))
         prjΨ4 = project(prjΨ, Dict(sitesx[1] => 1, sitesx[2] => 2))
         parttt_multi = PartitionedTT(prjΨ3) + PartitionedTT(prjΨ4)
-        
+
         # Should match prjΨ3
         all_sites_flat_multi = collect(Iterators.flatten(sites))
         multiindex3 = [1, 1, 1, 1, 1, 1]  # [x1=1, y1=1, x2=1, y2=1, x3=1, y3=1]
         result3 = parttt_multi(multiindex3)
         expected3 = prjΨ3(multiindex3, all_sites_flat_multi)
         @test result3 ≈ expected3
-        
+
         # Should match prjΨ4
         multiindex4 = [1, 1, 2, 1, 1, 1]  # [x1=1, y1=1, x2=2, y2=1, x3=1, y3=1]
         result4 = parttt_multi(multiindex4)
         expected4 = prjΨ4(multiindex4, all_sites_flat_multi)
         @test result4 ≈ expected4
-        
+
         # Should not match any projector (x2=3 doesn't exist)
         multiindex_no_match2 = [1, 1, 3, 1, 1, 1]  # [x1=1, y1=1, x2=3, ...]
         @test_throws ArgumentError parttt_multi(multiindex_no_match2)

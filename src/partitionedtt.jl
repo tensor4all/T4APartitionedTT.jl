@@ -4,8 +4,8 @@ PartitionedTT is a structure that holds multiple TensorTrains (SubDomainTT) that
 """
 mutable struct PartitionedTT
     data::OrderedDict{Projector,SubDomainTT}
-    tree::Union{Nothing, ProjectorTreeNode}
-    all_sites::Union{Nothing, Vector{Index}}
+    tree::Union{Nothing,ProjectorTreeNode}
+    all_sites::Union{Nothing,Vector{Index}}
 
     function PartitionedTT(data::AbstractVector{SubDomainTT})
         sites_all = [siteinds(subdtt) for subdtt in data]
@@ -17,7 +17,7 @@ mutable struct PartitionedTT
         dict_ = OrderedDict{Projector,SubDomainTT}(
             data[i].projector => data[i] for i in 1:length(data)
         )
-        
+
         # Build tree and cache all_sites
         tree = nothing
         all_sites = nothing
@@ -25,7 +25,7 @@ mutable struct PartitionedTT
             all_sites = collect(Iterators.flatten(sites_all[1]))
             tree = build_projector_tree(new(dict_, nothing, nothing), all_sites)
         end
-        
+
         return new(dict_, tree, all_sites)
     end
 end
@@ -36,7 +36,7 @@ PartitionedTT() = PartitionedTT(SubDomainTT[])
 
 function Base.show(io::IO, obj::PartitionedTT)
     n = length(obj)
-    print(io, "PartitionedTT with $n SubDomainTT$(n == 1 ? "" : "es")")
+    return print(io, "PartitionedTT with $n SubDomainTT$(n == 1 ? "" : "es")")
 end
 
 projectors(obj::PartitionedTT) = collect(keys(obj))
@@ -125,15 +125,11 @@ function rearrange_siteinds(obj::PartitionedTT, sites)
 end
 
 function prime(Ψ::PartitionedTT, args...; kwargs...)
-    return PartitionedTT([
-        prime(subdtt, args...; kwargs...) for subdtt in values(Ψ.data)
-    ])
+    return PartitionedTT([prime(subdtt, args...; kwargs...) for subdtt in values(Ψ.data)])
 end
 
 function noprime(Ψ::PartitionedTT, args...; kwargs...)
-    return PartitionedTT([
-        noprime(subdtt, args...; kwargs...) for subdtt in values(Ψ.data)
-    ])
+    return PartitionedTT([noprime(subdtt, args...; kwargs...) for subdtt in values(Ψ.data)])
 end
 
 """
@@ -348,17 +344,19 @@ function (parttt::PartitionedTT)(multiindex::Vector{Int})
     if parttt.all_sites === nothing || parttt.tree === nothing
         throw(ArgumentError("PartitionedTT is empty"))
     end
-    
+
     all_sites = parttt.all_sites
     tree = parttt.tree
-    
+
     # Check that multiindex has the correct length
     if length(multiindex) != length(all_sites)
-        throw(ArgumentError(
-            "MultiIndex length $(length(multiindex)) does not match number of site indices $(length(all_sites))"
-        ))
+        throw(
+            ArgumentError(
+                "MultiIndex length $(length(multiindex)) does not match number of site indices $(length(all_sites))",
+            ),
+        )
     end
-    
+
     # Create a Projector from the MultiIndex
     sites = siteinds(parttt)
     projector_dict = Dict{Index,Int}()
@@ -370,15 +368,15 @@ function (parttt::PartitionedTT)(multiindex::Vector{Int})
         end
     end
     target_projector = Projector(projector_dict)
-    
+
     # Search for matching SubDomainTT using cached tree
     result = find_in_tree(tree, target_projector, all_sites)
-    
+
     if result === nothing
         # No matching SubDomainTT found
         throw(ArgumentError("No matching SubDomainTT found for the given MultiIndex"))
     end
-    
+
     # Evaluate the SubDomainTT using function call syntax
     return result(multiindex, all_sites)
 end

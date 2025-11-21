@@ -207,11 +207,7 @@ function adaptivecontract(
             push!(result_blocks, subdtt_list[1])
         else
             patch_sum = _add_patching(
-                subdtt_list;
-                alg=alg_sum,
-                cutoff=cutoff,
-                maxdim=maxdim,
-                patchorder=pordering,
+                subdtt_list; alg=alg_sum, cutoff=cutoff, maxdim=maxdim, patchorder=pordering
             )
 
             append!(result_blocks, patch_sum)

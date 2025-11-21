@@ -9,12 +9,11 @@ A tree node for efficient lookup of SubDomainTT by projector.
 - `leaf::Union{Nothing, Tuple{Projector, SubDomainTT}}`: Leaf node data (projector and SubDomainTT)
 """
 mutable struct ProjectorTreeNode
-    site::Union{Index, Nothing}
-    children::Dict{Union{Int, Nothing}, ProjectorTreeNode}
-    leaf::Union{Nothing, Tuple{Projector, SubDomainTT}}
-    
-    function ProjectorTreeNode(site::Union{Index, Nothing}=nothing)
-        return new(site, Dict{Union{Int, Nothing}, ProjectorTreeNode}(), nothing)
+    site::Union{Index,Nothing}
+    children::Dict{Union{Int,Nothing},ProjectorTreeNode}
+    leaf::Union{Nothing,Tuple{Projector,SubDomainTT}}
+
+    function ProjectorTreeNode(site::Union{Index,Nothing}=nothing)
+        return new(site, Dict{Union{Int,Nothing},ProjectorTreeNode}(), nothing)
     end
 end
-

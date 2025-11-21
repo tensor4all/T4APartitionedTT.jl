@@ -132,31 +132,31 @@ include("_util.jl")
 
         # Test Caller with projector
         prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
-        
+
         # Get all sites in order
         all_sites = collect(Iterators.flatten(sites))
-        
+
         # Test evaluation at a valid MultiIndex
         # For projector sitesx[1] => 1, we need to use index 1 for sitesx[1]
         multiindex = [1, 1, 1, 1, 1, 1]  # [x1=1, y1=1, x2=1, y2=1, x3=1, y3=1]
         result1 = prjΨ1(multiindex, all_sites)
-        
+
         # Verify that the result is a scalar (not an ITensor)
         @test result1 isa Number
-        
+
         # Test with different index values
         multiindex2 = [1, 2, 2, 1, 2, 1]
         result2 = prjΨ1(multiindex2, all_sites)
         @test result2 isa Number
         # Results should be different for different indices
         @test result1 != result2 || (abs(result1) < 1e-10 && abs(result2) < 1e-10)
-        
+
         # Test with empty projector (no projection)
         prjΨ_empty = SubDomainTT(Ψ)
         multiindex3 = [1, 1, 1, 1, 1, 1]
         result3 = prjΨ_empty(multiindex3, all_sites)
         @test result3 isa Number
-        
+
         # Test that function call respects the projector constraint
         # For prjΨ1, sitesx[1] is projected to 1, so changing sitesx[1] to 2 should give 0
         multiindex_wrong = [2, 1, 1, 1, 1, 1]  # [x1=2, ...] but prjΨ1 requires x1=1

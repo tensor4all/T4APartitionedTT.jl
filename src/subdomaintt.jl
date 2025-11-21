@@ -222,11 +222,22 @@ function Base.:-(obj::SubDomainTT)::SubDomainTT
     return SubDomainTT(-1 * obj.data, obj.projector)
 end
 
-function truncate(obj::SubDomainTT; cutoff=default_cutoff(), maxdim=default_maxdim(), abs_cutoff=default_abs_cutoff(), kwargs...)::SubDomainTT
+function truncate(
+    obj::SubDomainTT;
+    cutoff=default_cutoff(),
+    maxdim=default_maxdim(),
+    abs_cutoff=default_abs_cutoff(),
+    kwargs...,
+)::SubDomainTT
     # T4AITensorCompat.truncate handles abs_cutoff internally and converts it to adjusted cutoff
     # abs_cutoff is already a keyword argument, so it won't be in kwargs
     return project(
-        SubDomainTT(T4AITensorCompat.truncate(obj.data; cutoff=cutoff, maxdim=maxdim, abs_cutoff=abs_cutoff, kwargs...)), obj.projector
+        SubDomainTT(
+            T4AITensorCompat.truncate(
+                obj.data; cutoff=cutoff, maxdim=maxdim, abs_cutoff=abs_cutoff, kwargs...
+            ),
+        ),
+        obj.projector,
     )
 end
 
@@ -333,23 +344,33 @@ Evaluate the SubDomainTT at the given MultiIndex.
 function (subdtt::SubDomainTT)(multiindex::Vector{Int}, all_sites::AbstractVector{<:Index})
     # Get site indices of the SubDomainTT
     subdtt_sites = siteinds(subdtt)
-    
+
     # Create a mapping from all_sites indices to MultiIndex positions
     idx_map = Dict{Index,Int}()
     for (pos, idx) in enumerate(all_sites)
         idx_map[idx] = pos
     end
-    
+
     # Build index values for each site in SubDomainTT
     site_index_vals = Vector{Int}[]
     for site_group in subdtt_sites
         push!(site_index_vals, [multiindex[idx_map[idx]] for idx in site_group])
     end
-    
+
     # Evaluate using ITensors onehot (similar to _evaluate function)
     tt = TensorTrain(subdtt)
-    return only(reduce(*, [
-        tt[n] * reduce(*, [ITensors.onehot(idx => val) for (idx, val) in zip(subdtt_sites[n], site_index_vals[n])])
-        for n in 1:length(tt)
-    ]))
+    return only(
+        reduce(
+            *,
+            [
+                tt[n] * reduce(
+                    *,
+                    [
+                        ITensors.onehot(idx => val) for
+                        (idx, val) in zip(subdtt_sites[n], site_index_vals[n])
+                    ],
+                ) for n in 1:length(tt)
+            ],
+        ),
+    )
 end

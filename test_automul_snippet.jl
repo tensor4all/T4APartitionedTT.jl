@@ -23,13 +23,11 @@ proj_lev_l = 2 # Max projected index left tensor
 proj_lev_r = 3 # Max projected index right tensor
 
 proj_l = vec([
-    Dict(zip(sites, combo)) for
-    combo in Iterators.product((1:d for _ in 1:proj_lev_l)...)
+    Dict(zip(sites, combo)) for combo in Iterators.product((1:d for _ in 1:proj_lev_l)...)
 ])
 
 proj_r = vec([
-    Dict(zip(sites, combo)) for
-    combo in Iterators.product((1:d for _ in 1:proj_lev_r)...)
+    Dict(zip(sites, combo)) for combo in Iterators.product((1:d for _ in 1:proj_lev_r)...)
 ])
 
 partΨ_l = T4APartitionedTT.PartitionedTT(T4APartitionedTT.project.(Ref(Ψ), proj_l))
@@ -66,8 +64,13 @@ failed_indices = findall(x -> x > atol_val, diffs)
 if !isempty(failed_indices)
     println("Failed indices: ", failed_indices[1:min(10, length(failed_indices))])
     println("Failed diffs: ", diffs[failed_indices[1:min(10, length(failed_indices))]])
-    println("Failed result values: ", result[failed_indices[1:min(10, length(failed_indices))]])
-    println("Failed reference values: ", reference[failed_indices[1:min(10, length(failed_indices))]])
+    println(
+        "Failed result values: ", result[failed_indices[1:min(10, length(failed_indices))]]
+    )
+    println(
+        "Failed reference values: ",
+        reference[failed_indices[1:min(10, length(failed_indices))]],
+    )
 else
     println("All differences are within atol")
 end
@@ -102,5 +105,7 @@ println("norm(reference) = ", ref_norm)
 println("diff_norm <= atol_val: ", diff_norm <= atol_val)
 println("diff_norm <= rtol_default * ref_norm: ", diff_norm <= rtol_default * ref_norm)
 
-println("\nTest result with atol only: ", isapprox(result, reference; atol=atol_val, rtol=0.0))
+println(
+    "\nTest result with atol only: ", isapprox(result, reference; atol=atol_val, rtol=0.0)
+)
 println("Test result with default rtol: ", isapprox(result, reference; atol=atol_val))

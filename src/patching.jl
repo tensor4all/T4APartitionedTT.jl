@@ -33,11 +33,7 @@ function _add_patching(
         prj_ = subdtts[1].projector & Projector(nextprjidx => prjval)
         blocks =
             blocks ∪ _add_patching(
-                [project(sudtt, prj_) for sudtt in subdtts];
-                cutoff,
-                maxdim,
-                alg,
-                patchorder,
+                [project(sudtt, prj_) for sudtt in subdtts]; cutoff, maxdim, alg, patchorder
             )
     end
 
@@ -79,7 +75,11 @@ Do patching recursively to reduce the bond dimension.
 If the bond dimension of a SubDomainTT exceeds `maxdim`, perform patching.
 """
 function _patch(
-    subdtt::SubDomainTT, patchorder; cutoff=default_cutoff(), maxdim=default_maxdim(), abs_cutoff=default_abs_cutoff()
+    subdtt::SubDomainTT,
+    patchorder;
+    cutoff=default_cutoff(),
+    maxdim=default_maxdim(),
+    abs_cutoff=default_abs_cutoff(),
 )::Vector{SubDomainTT}
     nextprjidx = _next_projindex(subdtt.projector, patchorder)
     if nextprjidx === nothing
@@ -94,7 +94,6 @@ function _patch(
     end
     return children
 end
-
 
 """
 Adaptive patching
@@ -123,9 +122,10 @@ in the worst case, rather than `cutoff`.
 - `PartitionedTT`: A new PartitionedTT with patches that have bond dimensions ≤ `maxdim`
 """
 function adaptive_patching(
-    prjtts::PartitionedTT, patchorder::AbstractVector{<:Index};
+    prjtts::PartitionedTT,
+    patchorder::AbstractVector{<:Index};
     cutoff=default_cutoff(),
-    maxdim=default_maxdim()
+    maxdim=default_maxdim(),
 )::PartitionedTT
     #ptt = collect(values(prjtts.data))
 
@@ -145,7 +145,9 @@ function adaptive_patching(
                 continue
             end
             updated = true
-            children::Vector{SubDomainTT} = _patch(subdtt, patchorder; cutoff=0.0, abs_cutoff, maxdim=typemax(Int))
+            children::Vector{SubDomainTT} = _patch(
+                subdtt, patchorder; cutoff=0.0, abs_cutoff, maxdim=typemax(Int)
+            )
             for c in children
                 p = deepcopy(c.projector)
                 new_data[p] = c

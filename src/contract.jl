@@ -159,10 +159,7 @@ end
 
 # Preprocessing of the patches to obtain all the contraction tasks from two T4APartitionedTTs
 function _contraction_tasks(
-    M1::PartitionedTT,
-    M2::PartitionedTT;
-    M::PartitionedTT=PartitionedTT(),
-    overwrite=true,
+    M1::PartitionedTT, M2::PartitionedTT; M::PartitionedTT=PartitionedTT(), overwrite=true
 )::Vector{Tuple{Projector,SubDomainTT,SubDomainTT}}
     final_patches = Dict{Projector,Vector{Tuple{SubDomainTT,SubDomainTT}}}()
     # Add a new patch only if the two subdtt are compatible (overlapping internal projected

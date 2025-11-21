@@ -12,7 +12,9 @@ sitesy = [Index(2, "y=$n") for n in 1:N]
 sites = collect(collect.(zip(sitesx, sitesy)))
 
 # Create a random tensor train
-function _random_mpo(sites::AbstractVector{<:AbstractVector{Index{T}}}; linkdims::Int=1) where {T}
+function _random_mpo(
+    sites::AbstractVector{<:AbstractVector{Index{T}}}; linkdims::Int=1
+) where {T}
     sites_ = collect(Iterators.flatten(sites))
     Ψ = T4AITensorCompat.random_mps(Random.default_rng(), sites_; linkdims)
     tensors = Vector{ITensor}(undef, length(sites))
@@ -36,4 +38,3 @@ catch e
     println("Error occurred:")
     showerror(stdout, e, catch_backtrace())
 end
-
