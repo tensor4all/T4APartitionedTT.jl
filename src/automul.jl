@@ -1,10 +1,10 @@
 @doc raw"""
     function elemmul(
-        M1::PartitionedMPS,
-        M2::PartitionedMPS
+        M1::PartitionedTT,
+        M2::PartitionedTT
     )
 
-Performs elementwise multiplication between partitioned MPSs. Element-wise product is defined 
+Performs elementwise multiplication between partitioned TensorTrains. Element-wise product is defined 
 as: 
 
 ```math
@@ -14,8 +14,8 @@ as:
 where ``f(\xi, \xi') = f(\xi) \delta_{\xi, \xi'}``. 
 """
 function elemmul(
-    M1::PartitionedMPS,
-    M2::PartitionedMPS;
+    M1::PartitionedTT,
+    M2::PartitionedTT;
     alg="zipup",
     maxdim=typemax(Int),
     cutoff=1e-25,
@@ -42,15 +42,15 @@ end
 
 @doc raw"""
     function automul(
-        M1::PartitionedMPS,
-        M2::PartitionedMPS;
+        M1::PartitionedTT,
+        M2::PartitionedTT;
         tag_row::String="",
         tag_shared::String="",
         tag_col::String="",
         ...
 )
 
-Performs automatic multiplication between partitioned MPSs. Automatic multiplication is defined
+Performs automatic multiplication between partitioned TensorTrains. Automatic multiplication is defined
 as:
 
 ```math
@@ -61,8 +61,8 @@ as:
 By default, only element-wise product on sites ``\xi`` will be performed. See also: [`elemmul`](@ref).
 """
 function automul(
-    M1::PartitionedMPS,
-    M2::PartitionedMPS;
+    M1::PartitionedTT,
+    M2::PartitionedTT;
     tag_row::String="",
     tag_shared::String="",
     tag_col::String="",

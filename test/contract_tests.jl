@@ -1,6 +1,6 @@
 using Test
-import T4APartitionedMPSs:
-    T4APartitionedMPSs, PartitionedMPS, Projector, project, SubDomainMPS, projcontract
+import T4APartitionedTT:
+    T4APartitionedTT, PartitionedTT, Projector, project, SubDomainTT, projcontract
 import T4AITensorCompat: TensorTrain, contract
 
 @testset "contract.jl" begin
@@ -16,10 +16,10 @@ import T4AITensorCompat: TensorTrain, contract
 
         a_mpo = _random_mpo(sitesa)
         b_mpo = _random_mpo(sitesb)
-        p1 = project(SubDomainMPS(a_mpo), Projector(Dict(sitesx[1] => 1)))
-        p2 = project(SubDomainMPS(b_mpo), Projector(Dict(sitesz[1] => 1)))
+        p1 = project(SubDomainTT(a_mpo), Projector(Dict(sitesx[1] => 1)))
+        p2 = project(SubDomainTT(b_mpo), Projector(Dict(sitesz[1] => 1)))
 
-        p12 = T4APartitionedMPSs.contract(p1, p2; alg="naive")
+        p12 = T4APartitionedTT.contract(p1, p2; alg="naive")
 
         @test p12.projector == Projector(Dict(sitesx[1] => 1, sitesz[1] => 1))
 
@@ -45,11 +45,11 @@ import T4AITensorCompat: TensorTrain, contract
         b = _random_mpo(sitesb; linkdims=linkdims)
 
         proj_a = [
-            project(SubDomainMPS(a), Projector(Dict(sitesx[1] => i, sitesy[1] => j))) for
+            project(SubDomainTT(a), Projector(Dict(sitesx[1] => i, sitesy[1] => j))) for
             i in 1:2, j in 1:2
         ]
         proj_b = [
-            project(SubDomainMPS(b), Projector(Dict(sitesy[1] => i, sitesz[1] => j))) for
+            project(SubDomainTT(b), Projector(Dict(sitesy[1] => i, sitesz[1] => j))) for
             i in 1:2, j in 1:2
         ]
 
@@ -75,9 +75,9 @@ import T4AITensorCompat: TensorTrain, contract
 
         patchorder = patching ? collect(Iterators.flatten(zip(sitesx, sitesz))) : Index[]
         maxdim_ = patching ? linkdims^2 : typemax(Int)
-        ab = T4APartitionedMPSs.contract(
-            PartitionedMPS(vec(proj_a)),
-            PartitionedMPS(vec(proj_b));
+        ab = T4APartitionedTT.contract(
+            PartitionedTT(vec(proj_a)),
+            PartitionedTT(vec(proj_b));
             alg="fit",
             cutoff,
             maxdim=maxdim_,

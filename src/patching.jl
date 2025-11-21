@@ -1,39 +1,39 @@
 """
-Add multiple SubDomainMPS objects on the same projector.
+Add multiple SubDomainTT objects on the same projector.
 
 If the bond dimension of the result reaches `maxdim`,
 perform patching recursively to reduce the bond dimension.
 """
 function _add_patching(
-    subdmpss::AbstractVector{SubDomainMPS};
-    cutoff=0.0,
-    maxdim=typemax(Int),
+    subdtts::AbstractVector{SubDomainTT};
+    cutoff=default_cutoff(),
+    maxdim=default_maxdim(),
     alg="fit",
     patchorder=Index[],
-)::Vector{SubDomainMPS}
-    if length(unique([sudmps.projector for sudmps in subdmpss])) != 1
-        error("All SubDomainMPS objects must have the same projector.")
+)::Vector{SubDomainTT}
+    if length(unique([sudtt.projector for sudtt in subdtts])) != 1
+        error("All SubDomainTT objects must have the same projector.")
     end
 
     # First perform addition upto given maxdim
     # TODO: Early termination if the bond dimension reaches maxdim
-    sum_approx = _add(subdmpss...; alg, cutoff, maxdim)
+    sum_approx = _add(subdtts...; alg, cutoff, maxdim)
 
     # If the bond dimension is less than maxdim, return the result
     maxbonddim(sum_approx) < maxdim && return [sum_approx]
 
     # @assert maxbonddim(sum_approx) == maxdim
 
-    nextprjidx = _next_projindex(subdmpss[1].projector, patchorder)
+    nextprjidx = _next_projindex(subdtts[1].projector, patchorder)
 
     nextprjidx === nothing && return [sum_approx]
 
-    blocks = SubDomainMPS[]
+    blocks = SubDomainTT[]
     for prjval in 1:ITensors.dim(nextprjidx)
-        prj_ = subdmpss[1].projector & Projector(nextprjidx => prjval)
+        prj_ = subdtts[1].projector & Projector(nextprjidx => prjval)
         blocks =
             blocks ∪ _add_patching(
-                [project(sudmps, prj_) for sudmps in subdmpss];
+                [project(sudtt, prj_) for sudtt in subdtts];
                 cutoff,
                 maxdim,
                 alg,
@@ -57,70 +57,104 @@ function _next_projindex(prj::Projector, patchorder)::Union{Nothing,Index}
 end
 
 """
-Add multiple PartitionedMPS objects.
+Add multiple PartitionedTT objects.
 """
 function add_patching(
-    partmps::AbstractVector{PartitionedMPS};
-    cutoff=0.0,
-    maxdim=typemax(Int),
-    alg="fit",
+    parttt::AbstractVector{PartitionedTT};
+    cutoff=default_cutoff(),
+    maxdim=default_maxdim(),
+    alg=Algorithm"fit"(),
     patchorder=Index[],
-)::PartitionedMPS
+)::PartitionedTT
     result = _add_patching(
-        union(values(x) for x in partmps); cutoff, maxdim, alg, patchorder
+        union(values(x) for x in parttt); cutoff, maxdim, alg, patchorder
     )
-    return PartitionedMPS(result)
+    return PartitionedTT(result)
 end
 
 """
 Adaptive patching
 
 Do patching recursively to reduce the bond dimension.
-If the bond dimension of a SubDomainMPS exceeds `maxdim`, perform patching.
+If the bond dimension of a SubDomainTT exceeds `maxdim`, perform patching.
 """
-function adaptive_patching(
-    subdmps::SubDomainMPS, patchorder; cutoff=0.0, maxdim=typemax(Int)
-)::Vector{SubDomainMPS}
-    if maxbonddim(subdmps) <= maxdim
-        return [subdmps]
-    end
-
-    # If the bond dimension exceeds maxdim, perform patching
-    refined_subdmpss = SubDomainMPS[]
-    nextprjidx = _next_projindex(subdmps.projector, patchorder)
+function _patch(
+    subdtt::SubDomainTT, patchorder; cutoff=default_cutoff(), maxdim=default_maxdim(), abs_cutoff=default_abs_cutoff()
+)::Vector{SubDomainTT}
+    nextprjidx = _next_projindex(subdtt.projector, patchorder)
     if nextprjidx === nothing
-        return [subdmps]
+        return [subdtt]
     end
 
+    children = SubDomainTT[]
     for prjval in 1:ITensors.dim(nextprjidx)
-        prj_ = subdmps.projector & Projector(nextprjidx => prjval)
-        subdmps_ = truncate(project(subdmps, prj_); cutoff, maxdim)
-        if maxbonddim(subdmps_) <= maxdim
-            push!(refined_subdmpss, subdmps_)
-        else
-            append!(
-                refined_subdmpss, adaptive_patching(subdmps_, patchorder; cutoff, maxdim)
-            )
-        end
+        prj_ = subdtt.projector & Projector(nextprjidx => prjval)
+        subdtt_ = truncate(project(subdtt, prj_); cutoff, maxdim, abs_cutoff)
+        push!(children, subdtt_)
     end
-    return refined_subdmpss
+    return children
 end
+
 
 """
 Adaptive patching
 
 Do patching recursively to reduce the bond dimension.
-If the bond dimension of a SubDomainMPS exceeds `maxdim`, perform patching.
+If the bond dimension of a SubDomainTT exceeds `maxdim`, perform patching.
+
+# Truncation Scheme
+
+Each patch is truncated using `abs_cutoff = cutoff * total_norm2`, where `total_norm2` is the sum of squared norms of all patches in the PartitionedTT.
+This means each patch uses the same absolute cutoff value based on the total norm of the entire PartitionedTT.
+
+**Note**: This truncation scheme can lead to the total relative error exceeding `cutoff` when there are many patches, 
+since the errors from individual patches accumulate. The total error is approximately bounded by `cutoff * number_of_patches` 
+in the worst case, rather than `cutoff`.
+
+# Arguments
+- `prjtts::PartitionedTT`: The partitioned MPS to perform adaptive patching on
+- `patchorder::AbstractVector{<:Index}`: The order of indices to use for patching
+
+# Keyword Arguments
+- `cutoff`: Relative cutoff threshold (default: `default_cutoff()`)
+- `maxdim`: Maximum bond dimension (default: `default_maxdim()`)
+
+# Returns
+- `PartitionedTT`: A new PartitionedTT with patches that have bond dimensions ≤ `maxdim`
 """
 function adaptive_patching(
-    prjmpss::PartitionedMPS, patchorder; cutoff=0.0, maxdim=typemax(Int)
-)::PartitionedMPS
-    return PartitionedMPS(
-        collect(
-            Iterators.flatten((
-                apdaptive_patching(prjmps; cutoff, maxdim, patchorder) for
-                prjmps in values(prjmpss)
-            )),
-        ),
-    )
+    prjtts::PartitionedTT, patchorder::AbstractVector{<:Index};
+    cutoff=default_cutoff(),
+    maxdim=default_maxdim()
+)::PartitionedTT
+    #ptt = collect(values(prjtts.data))
+
+    norm2 = [LinearAlgebra.norm(subdtt)^2 for subdtt in values(prjtts.data)]
+    total_norm2 = sum(norm2)
+    abs_cutoff = cutoff * total_norm2
+
+    data = OrderedDict{Projector,SubDomainTT}(key => subdtt for (key, subdtt) in prjtts)
+
+    conv_data = OrderedDict{Projector,SubDomainTT}()
+    for i in 1:100
+        new_data = OrderedDict{Projector,SubDomainTT}()
+        updated = false
+        for (key, subdtt) in data
+            if maxbonddim(subdtt) < maxdim
+                conv_data[key] = subdtt
+                continue
+            end
+            updated = true
+            children::Vector{SubDomainTT} = _patch(subdtt, patchorder; cutoff=0.0, abs_cutoff, maxdim=typemax(Int))
+            for c in children
+                p = deepcopy(c.projector)
+                new_data[p] = c
+            end
+        end
+        if !updated
+            break
+        end
+        data = new_data
+    end
+    return PartitionedTT(collect(values(conv_data)))
 end

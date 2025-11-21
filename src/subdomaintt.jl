@@ -1,11 +1,11 @@
 """
-An MPS with a projector.
+A TensorTrain with a projector.
 """
-struct SubDomainMPS
+struct SubDomainTT
     data::TensorTrain
     projector::Projector
 
-    function SubDomainMPS(data::TensorTrain, projector::Projector)
+    function SubDomainTT(data::TensorTrain, projector::Projector)
         _iscompatible(projector, data) || error(
             "Incompatible projector and data. Even small numerical noise can cause this error.",
         )
@@ -14,15 +14,15 @@ struct SubDomainMPS
     end
 end
 
-siteinds(obj::SubDomainMPS) = siteinds(obj.data)
+siteinds(obj::SubDomainTT) = siteinds(obj.data)
 
-ITensors.siteinds(obj::SubDomainMPS) = siteinds(obj.data)
+ITensors.siteinds(obj::SubDomainTT) = siteinds(obj.data)
 
 _allsites(Ψ::TensorTrain) = collect(Iterators.flatten(siteinds(Ψ)))
-_allsites(Ψ::SubDomainMPS) = _allsites(Ψ.data)
+_allsites(Ψ::SubDomainTT) = _allsites(Ψ.data)
 
-maxlinkdim(Ψ::SubDomainMPS) = maxlinkdim(Ψ.data)
-maxbonddim(Ψ::SubDomainMPS) = maxlinkdim(Ψ.data)
+maxlinkdim(Ψ::SubDomainTT) = maxlinkdim(Ψ.data)
+maxbonddim(Ψ::SubDomainTT) = maxlinkdim(Ψ.data)
 
 function _trim_projector(obj::TensorTrain, projector)
     sites = Set(_allsites(obj))
@@ -35,13 +35,13 @@ function _trim_projector(obj::TensorTrain, projector)
     return newprj
 end
 
-function SubDomainMPS(Ψ::TensorTrain)
-    return SubDomainMPS(Ψ, Projector())
+function SubDomainTT(Ψ::TensorTrain)
+    return SubDomainTT(Ψ, Projector())
 end
 
 # Conversion Functions
 # Conversion to TensorTrain
-TensorTrain(projΨ::SubDomainMPS) = projΨ.data
+TensorTrain(projΨ::SubDomainTT) = projΨ.data
 
 function project(tensor::ITensor, projector::Projector)
     slice = Union{Int,Colon}[
@@ -58,89 +58,99 @@ function project(tensor::ITensor, projector::Projector)
     return ITensor(data_trim, ITensors.inds(tensor)...)
 end
 
-function project(projΨ::SubDomainMPS, projector::Projector)::Union{Nothing,SubDomainMPS}
+function project(projΨ::SubDomainTT, projector::Projector)::Union{Nothing,SubDomainTT}
     if !hasoverlap(projector, projΨ.projector)
         return nothing
     end
 
-    return SubDomainMPS(
+    return SubDomainTT(
         TensorTrain([project(projΨ.data[n], projector) for n in 1:length(projΨ.data)]),
         projector,
     )
 end
 
 function project(
-    projΨ::SubDomainMPS, pairs::Vararg{Pair{Index{T},Int}}
-)::Union{Nothing,SubDomainMPS} where {T}
+    projΨ::SubDomainTT, pairs::Vararg{Pair{Index{T},Int}}
+)::Union{Nothing,SubDomainTT} where {T}
     return project(projΨ, Projector(pairs...))
 end
 
 function project(
     Ψ::TensorTrain, pairs::Vararg{Pair{Index{T},Int}}
-)::Union{Nothing,SubDomainMPS} where {T}
+)::Union{Nothing,SubDomainTT} where {T}
     return project(Ψ, Projector(pairs...))
 end
 
-function project(Ψ::TensorTrain, projector::Projector)::Union{Nothing,SubDomainMPS}
-    return project(SubDomainMPS(Ψ), projector)
+function project(Ψ::TensorTrain, projector::Projector)::Union{Nothing,SubDomainTT}
+    return project(SubDomainTT(Ψ), projector)
 end
 
 function project(
-    projΨ::SubDomainMPS, projector::Dict{InsT,Int}
-)::Union{Nothing,SubDomainMPS} where {InsT}
+    projΨ::SubDomainTT, projector::Dict{InsT,Int}
+)::Union{Nothing,SubDomainTT} where {InsT}
     return project(projΨ, Projector(projector))
 end
 
 function project(
     Ψ::TensorTrain, projector::Dict{InsT,Int}
-)::Union{Nothing,SubDomainMPS} where {InsT}
-    return project(SubDomainMPS(Ψ), Projector(projector))
+)::Union{Nothing,SubDomainTT} where {InsT}
+    return project(SubDomainTT(Ψ), Projector(projector))
 end
 
 function _iscompatible(projector::Projector, tensor::ITensor)
-    # Lazy implementation
-    return ITensors.norm(project(tensor, projector) - tensor) == 0.0
+    # Check compatibility by directly projecting the ITensor (not TensorTrain)
+    # This is safe because project(tensor::ITensor, projector) returns ITensor, not SubDomainTT
+    projected = project(tensor, projector)
+    return ITensors.norm(projected - tensor) == 0.0
 end
 
 function _iscompatible(projector::Projector, Ψ::TensorTrain)
-    return all((_iscompatible(projector, x) for x in Ψ))
+    # Check each tensor individually to avoid infinite recursion
+    # We check each ITensor in the TensorTrain, not the TensorTrain itself
+    # This avoids calling project(Ψ, projector) which would create SubDomainTT
+    for x in Ψ
+        if !_iscompatible(projector, x)
+            return false
+        end
+    end
+    return true
 end
 
-function rearrange_siteinds(subdmps::SubDomainMPS, sites)
-    tt_rearranged = rearrange_siteinds(TensorTrain(subdmps), sites)
-    return project(SubDomainMPS(tt_rearranged), subdmps.projector)
+function rearrange_siteinds(subdtt::SubDomainTT, sites)
+    tt_rearranged = rearrange_siteinds(TensorTrain(subdtt), sites)
+    return project(SubDomainTT(tt_rearranged), subdtt.projector)
 end
 
 # Miscellaneous Functions
-function Base.show(io::IO, obj::SubDomainMPS)
-    return print(io, "SubDomainMPS projected on $(obj.projector.data)")
+function Base.show(io::IO, obj::SubDomainTT)
+    return print(io, "SubDomainTT projected on $(obj.projector.data)")
 end
 
-function prime(Ψ::SubDomainMPS, plinc=1; kwargs...)
-    return SubDomainMPS(
+function prime(Ψ::SubDomainTT, plinc=1; kwargs...)
+    return SubDomainTT(
         ITensors.prime(TensorTrain(Ψ), plinc; kwargs...),
-        T4APartitionedMPSs.prime(Ψ.projector, plinc; kwargs...),
+        T4APartitionedTT.prime(Ψ.projector, plinc; kwargs...),
     )
 end
 
-function noprime(Ψ::SubDomainMPS, args...; kwargs...)
+function noprime(Ψ::SubDomainTT, args...; kwargs...)
     if :inds ∈ keys(kwargs)
         targetsites = kwargs[:inds]
     else
         targetsites = nothing
     end
 
-    return SubDomainMPS(
+    return SubDomainTT(
         ITensors.noprime(TensorTrain(Ψ), args...; kwargs...),
-        T4APartitionedMPSs.noprime(Ψ.projector; targetsites),
+        T4APartitionedTT.noprime(Ψ.projector; targetsites),
     )
 end
 
-function Base.isapprox(x::SubDomainMPS, y::SubDomainMPS; kwargs...)
+function Base.isapprox(x::SubDomainTT, y::SubDomainTT; kwargs...)
     return Base.isapprox(x.data, y.data, kwargs...)
 end
 
-function isprojectedat(obj::SubDomainMPS, ind::IndsT)::Bool where {IndsT}
+function isprojectedat(obj::SubDomainTT, ind::IndsT)::Bool where {IndsT}
     return isprojectedat(obj.projector, ind)
 end
 
@@ -186,44 +196,46 @@ function _add(ψ::TensorTrain...; alg="fit", cutoff=1e-15, maxdim=typemax(Int), 
 end
 
 function Base.:+(
-    Ψ::SubDomainMPS...; alg="fit", cutoff=0.0, maxdim=typemax(Int), kwargs...
-)::SubDomainMPS
+    Ψ::SubDomainTT...; alg="fit", cutoff=0.0, maxdim=typemax(Int), kwargs...
+)::SubDomainTT
     return _add(Ψ...; alg=alg, cutoff=cutoff, maxdim=maxdim, kwargs...)
 end
 
 function _add(
-    Ψ::SubDomainMPS...; alg="fit", cutoff=0.0, maxdim=typemax(Int), kwargs...
-)::SubDomainMPS
+    Ψ::SubDomainTT...; alg="fit", cutoff=0.0, maxdim=typemax(Int), kwargs...
+)::SubDomainTT
     return project(
         _add([x.data for x in Ψ]...; alg=alg, cutoff=cutoff, maxdim=maxdim, kwargs...),
         reduce(|, [x.projector for x in Ψ]),
     )
 end
 
-function Base.:*(a::SubDomainMPS, b::Number)::SubDomainMPS
-    return SubDomainMPS(a.data * b, a.projector)
+function Base.:*(a::SubDomainTT, b::Number)::SubDomainTT
+    return SubDomainTT(a.data * b, a.projector)
 end
 
-function Base.:*(a::Number, b::SubDomainMPS)::SubDomainMPS
-    return SubDomainMPS(b.data * a, b.projector)
+function Base.:*(a::Number, b::SubDomainTT)::SubDomainTT
+    return SubDomainTT(b.data * a, b.projector)
 end
 
-function Base.:-(obj::SubDomainMPS)::SubDomainMPS
-    return SubDomainMPS(-1 * obj.data, obj.projector)
+function Base.:-(obj::SubDomainTT)::SubDomainTT
+    return SubDomainTT(-1 * obj.data, obj.projector)
 end
 
-function truncate(obj::SubDomainMPS; kwargs...)::SubDomainMPS
+function truncate(obj::SubDomainTT; cutoff=default_cutoff(), maxdim=default_maxdim(), abs_cutoff=default_abs_cutoff(), kwargs...)::SubDomainTT
+    # T4AITensorCompat.truncate handles abs_cutoff internally and converts it to adjusted cutoff
+    # abs_cutoff is already a keyword argument, so it won't be in kwargs
     return project(
-        SubDomainMPS(T4AITensorCompat.truncate(obj.data; kwargs...)), obj.projector
+        SubDomainTT(T4AITensorCompat.truncate(obj.data; cutoff=cutoff, maxdim=maxdim, abs_cutoff=abs_cutoff, kwargs...)), obj.projector
     )
 end
 
-function LinearAlgebra.norm(M::SubDomainMPS)
+function LinearAlgebra.norm(M::SubDomainTT)
     return LinearAlgebra.norm(TensorTrain(M))
 end
 
 function _makesitediagonal(
-    obj::SubDomainMPS, sites::AbstractVector{Index{IndsT}}; baseplev=0
+    obj::SubDomainTT, sites::AbstractVector{Index{IndsT}}; baseplev=0
 ) where {IndsT}
     M_ = deepcopy(TensorTrain(obj))
     for site in sites
@@ -245,19 +257,19 @@ function _makesitediagonal(
     return project(M_, newproj)
 end
 
-function makesitediagonal(obj::SubDomainMPS, site::Index{IndsT}; baseplev=0) where {IndsT}
+function makesitediagonal(obj::SubDomainTT, site::Index{IndsT}; baseplev=0) where {IndsT}
     return _makesitediagonal(obj, [site]; baseplev=baseplev)
 end
 
 function makesitediagonal(
-    obj::SubDomainMPS, sites::AbstractVector{Index{IndsT}}; baseplev=0
+    obj::SubDomainTT, sites::AbstractVector{Index{IndsT}}; baseplev=0
 ) where {IndsT}
     return _makesitediagonal(obj, sites; baseplev=baseplev)
 end
 
-function makesitediagonal(obj::SubDomainMPS, tag::String)
+function makesitediagonal(obj::SubDomainTT, tag::String)
     tt_diagonal = makesitediagonal(TensorTrain(obj), tag)
-    SubDomainMPS_diagonal = SubDomainMPS(tt_diagonal)
+    SubDomainTT_diagonal = SubDomainTT(tt_diagonal)
 
     target_sites = findallsiteinds_by_tag(
         unique(ITensors.noprime.(Iterators.flatten(siteinds(obj)))); tag=tag
@@ -270,11 +282,11 @@ function makesitediagonal(obj::SubDomainMPS, tag::String)
         end
     end
 
-    return project(SubDomainMPS_diagonal, newproj)
+    return project(SubDomainTT_diagonal, newproj)
 end
 
 function extractdiagonal(
-    obj::SubDomainMPS, sites::AbstractVector{Index{IndsT}}
+    obj::SubDomainTT, sites::AbstractVector{Index{IndsT}}
 ) where {IndsT}
     tensors = Vector{ITensor}(collect(obj.data))
     for i in eachindex(tensors)
@@ -294,14 +306,50 @@ function extractdiagonal(
         newk = ITensors.noprime(k)
         newD[newk] = v
     end
-    return SubDomainMPS(TensorTrain(tensors), Projector(newD))
+    return SubDomainTT(TensorTrain(tensors), Projector(newD))
 end
 
-function extractdiagonal(obj::SubDomainMPS, tag::String)::SubDomainMPS
+function extractdiagonal(obj::SubDomainTT, tag::String)::SubDomainTT
     targetsites = findallsiteinds_by_tag(unique(ITensors.noprime.(_allsites(obj))); tag=tag)
     return extractdiagonal(obj, targetsites)
 end
 
-function extractdiagonal(subdmps::SubDomainMPS, site::Index{IndsT}) where {IndsT}
-    return extractdiagonal(subdmps, [site])
+function extractdiagonal(subdtt::SubDomainTT, site::Index{IndsT}) where {IndsT}
+    return extractdiagonal(subdtt, [site])
+end
+
+"""
+    (subdtt::SubDomainTT)(multiindex::Vector{Int}, all_sites::AbstractVector{<:Index})
+
+Evaluate the SubDomainTT at the given MultiIndex.
+
+# Arguments
+- `multiindex::Vector{Int}`: The MultiIndex (vector of site index values) to evaluate at
+- `all_sites::AbstractVector{<:Index}`: All site indices in the order corresponding to multiindex
+
+# Returns
+- The evaluation value of the SubDomainTT at the given MultiIndex
+"""
+function (subdtt::SubDomainTT)(multiindex::Vector{Int}, all_sites::AbstractVector{<:Index})
+    # Get site indices of the SubDomainTT
+    subdtt_sites = siteinds(subdtt)
+    
+    # Create a mapping from all_sites indices to MultiIndex positions
+    idx_map = Dict{Index,Int}()
+    for (pos, idx) in enumerate(all_sites)
+        idx_map[idx] = pos
+    end
+    
+    # Build index values for each site in SubDomainTT
+    site_index_vals = Vector{Int}[]
+    for site_group in subdtt_sites
+        push!(site_index_vals, [multiindex[idx_map[idx]] for idx in site_group])
+    end
+    
+    # Evaluate using ITensors onehot (similar to _evaluate function)
+    tt = TensorTrain(subdtt)
+    return only(reduce(*, [
+        tt[n] * reduce(*, [ITensors.onehot(idx => val) for (idx, val) in zip(subdtt_sites[n], site_index_vals[n])])
+        for n in 1:length(tt)
+    ]))
 end

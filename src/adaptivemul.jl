@@ -1,16 +1,16 @@
 """
-Lazy evaluation for contraction of two SubDomainMPS objects.
+Lazy evaluation for contraction of two SubDomainTT objects.
 """
 struct LazyContraction
-    a::SubDomainMPS
-    b::SubDomainMPS
+    a::SubDomainTT
+    b::SubDomainTT
     projector::Projector # Projector for the external indices of (a * b)
-    function LazyContraction(a::SubDomainMPS, b::SubDomainMPS)
+    function LazyContraction(a::SubDomainTT, b::SubDomainTT)
         shared_inds = Set{Index}()
         for (a_, b_) in zip(siteinds(a), siteinds(b))
             cinds = commoninds(a_, b_)
             length(cinds) > 0 ||
-                error("The two SubDomainMPS must have common indices at every site.")
+                error("The two SubDomainTT must have common indices at every site.")
             shared_inds = shared_inds ∪ cinds
         end
         #@show  typeof(_projector_after_contract(a, b))
@@ -18,7 +18,7 @@ struct LazyContraction
     end
 end
 
-function lazycontraction(a::SubDomainMPS, b::SubDomainMPS)::Union{LazyContraction,Nothing}
+function lazycontraction(a::SubDomainTT, b::SubDomainTT)::Union{LazyContraction,Nothing}
     # If any of shared indices between a and b is projected at different levels, return nothing
     if a.projector & b.projector === nothing
         return nothing
@@ -37,17 +37,17 @@ function project(obj::LazyContraction, prj::Projector; kwargs...)::LazyContracti
     new_a = project(obj.a, prj; kwargs...)
     new_b = project(obj.b, prj; kwargs...)
     if isnothing(new_a) || isnothing(new_b)
-        error("New projector is not compatible with SubDomainMPSs projectors.")
+        error("New projector is not compatible with SubDomainTTs projectors.")
     end
     return LazyContraction(new_a, new_b)
 end
 
-# Preprocessing of the patches to obtain all the contraction tasks from two T4APartitionedMPSs
+# Preprocessing of the patches to obtain all the contraction tasks from two T4APartitionedTTs
 function _adaptivecontraction_tasks(
-    M1::PartitionedMPS, M2::PartitionedMPS
-)::Dict{Projector,Vector{Union{SubDomainMPS,LazyContraction}}}
-    final_patches = Dict{Projector,Vector{Tuple{SubDomainMPS,SubDomainMPS}}}()
-    # Add a new patch only if the two subdmps are compatible (overlapping internal projected
+    M1::PartitionedTT, M2::PartitionedTT
+)::Dict{Projector,Vector{Union{SubDomainTT,LazyContraction}}}
+    final_patches = Dict{Projector,Vector{Tuple{SubDomainTT,SubDomainTT}}}()
+    # Add a new patch only if the two subdtt are compatible (overlapping internal projected
     # sites) and the new patch is non-overlapping with all the existing ones.
     for m1 in values(M1), m2 in values(M2)
         tmp_prj = _projector_after_contract(m1, m2)[1]
@@ -68,12 +68,12 @@ function _adaptivecontraction_tasks(
         end
     end
 
-    # Transform the SubDomainMPS pairs in LazyContraction wrappers
-    tasks = Dict{Projector,Vector{Union{SubDomainMPS,LazyContraction}}}()
+    # Transform the SubDomainTT pairs in LazyContraction wrappers
+    tasks = Dict{Projector,Vector{Union{SubDomainTT,LazyContraction}}}()
 
-    for (proj, subdmps_pair) in final_patches
-        resultvec = Union{SubDomainMPS,LazyContraction}[]
-        for pair in subdmps_pair
+    for (proj, subdtt_pair) in final_patches
+        resultvec = Union{SubDomainTT,LazyContraction}[]
+        for pair in subdtt_pair
             # Trim projectors to produce only non-overlapping patches
             lc = project(lazycontraction(pair...), proj)
             if lc === nothing
@@ -88,11 +88,11 @@ function _adaptivecontraction_tasks(
     return tasks
 end
 
-# Performs the patched contraction of two PartitionedMPS
+# Performs the patched contraction of two PartitionedTT
 # For each compatible pair of patches the contraction is attempted and split in smaller patches
 # if the result exceeds the fixed bond dimension. 
 function patch_contract!(
-    patches::Dict{Projector,Vector{Union{SubDomainMPS,LazyContraction}}},
+    patches::Dict{Projector,Vector{Union{SubDomainTT,LazyContraction}}},
     pordering::AbstractVector{Index{IndsT}},
     maxdim,
     cutoff;
@@ -121,7 +121,7 @@ function patch_contract!(
                     # Check the bond dimension of result 
                     max_bdim = maxbonddim(contracted)
                     if max_bdim < maxdim
-                        # Good: replace the lazy contraction with final SubDomainMPS
+                        # Good: replace the lazy contraction with final SubDomainTT
                         blockvec[i] = contracted
                     else
                         # Too large => we must expand the projector
@@ -145,7 +145,7 @@ function patch_contract!(
                                 # Add a new lazy contraction to patches[new_prj]
                                 push!(
                                     get!(
-                                        () -> Vector{Union{SubDomainMPS,LazyContraction}}(),
+                                        () -> Vector{Union{SubDomainTT,LazyContraction}}(),
                                         patches,
                                         new_prj,
                                     ),
@@ -174,14 +174,14 @@ function patch_contract!(
 end
 
 """
-Perform contraction of two PartitionedMPS objects.
+Perform contraction of two PartitionedTT objects.
 
 The resulting patches after the contraction are patch-added if projected on the same final patch. 
 
 """
 function adaptivecontract(
-    a::PartitionedMPS,
-    b::PartitionedMPS,
+    a::PartitionedTT,
+    b::PartitionedTT,
     pordering::AbstractVector{Index{IndsT}}=Index{IndsT}[];
     alg="fit",
     alg_sum="fit",
@@ -197,17 +197,17 @@ function adaptivecontract(
     # Perform the iterative patch contraction
     patch_contract!(patches, pordering, maxdim, cutoff; alg=alg, kwargs...)
 
-    # Resum SubDomainMPS on the same patch
-    result_blocks = SubDomainMPS[]
+    # Resum SubDomainTT on the same patch
+    result_blocks = SubDomainTT[]
     for (prj, blockvec) in patches
-        # Each entry in blockvec is now guaranteed to be a SubDomainMPS
-        subdmps_list = Vector{SubDomainMPS}(blockvec)
+        # Each entry in blockvec is now guaranteed to be a SubDomainTT
+        subdtt_list = Vector{SubDomainTT}(blockvec)
 
-        if length(subdmps_list) == 1
-            push!(result_blocks, subdmps_list[1])
+        if length(subdtt_list) == 1
+            push!(result_blocks, subdtt_list[1])
         else
             patch_sum = _add_patching(
-                subdmps_list;
+                subdtt_list;
                 alg=alg_sum,
                 cutoff=cutoff,
                 maxdim=maxdim,
@@ -218,5 +218,5 @@ function adaptivecontract(
         end
     end
 
-    return PartitionedMPS(result_blocks)
+    return PartitionedTT(result_blocks)
 end

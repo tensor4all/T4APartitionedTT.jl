@@ -3,10 +3,10 @@ using Test
 using Random
 using ITensors
 
-import T4APartitionedMPSs:
-    T4APartitionedMPSs,
-    PartitionedMPS,
-    SubDomainMPS,
+import T4APartitionedTT:
+    T4APartitionedTT,
+    PartitionedTT,
+    SubDomainTT,
     makesitediagonal,
     extractdiagonal,
     project,
@@ -28,7 +28,7 @@ import T4AITensorCompat: TensorTrain, MPS, MPO
         sites_vec = [[x] for x in sites]
 
         Ψ = _random_mpo(sites_vec; linkdims=L)
-        dummy_subdmps = SubDomainMPS(Ψ)
+        dummy_subdtt = SubDomainTT(Ψ)
 
         proj_lev_l = 2 # Max projected index left tensor 
         proj_lev_r = 3 # Max projected index right tensor
@@ -43,14 +43,14 @@ import T4AITensorCompat: TensorTrain, MPS, MPO
             combo in Iterators.product((1:d for _ in 1:proj_lev_r)...)
         ])
 
-        partΨ_l = PartitionedMPS(project.(Ref(Ψ), proj_l))
-        partΨ_r = PartitionedMPS(project.(Ref(Ψ), proj_r))
+        partΨ_l = PartitionedTT(project.(Ref(Ψ), proj_l))
+        partΨ_r = PartitionedTT(project.(Ref(Ψ), proj_r))
 
-        diag_dummy_l = makesitediagonal(dummy_subdmps, sites; baseplev=1)
-        diag_dummy_r = makesitediagonal(dummy_subdmps, sites; baseplev=0)
+        diag_dummy_l = makesitediagonal(dummy_subdtt, sites; baseplev=1)
+        diag_dummy_r = makesitediagonal(dummy_subdtt, sites; baseplev=0)
 
         elemmul_dummy = extractdiagonal(
-            T4APartitionedMPSs.contract(diag_dummy_l, diag_dummy_r; alg="zipup"), sites
+            T4APartitionedTT.contract(diag_dummy_l, diag_dummy_r; alg="zipup"), sites
         )
 
         element_prod = elemmul(partΨ_l, partΨ_r)
@@ -60,11 +60,12 @@ import T4AITensorCompat: TensorTrain, MPS, MPO
 
         test_points = [[rand(1:d) for __ in 1:N] for _ in 1:1000]
 
-        @test isapprox(
-            [_evaluate(mps_element_prod, sites, p) for p in test_points],
-            [_evaluate(Ψ, sites, p)^2 for p in test_points];
-            atol=sqrt(default_cutoff()), # default_cutoff() = 1e-25 is the contraction cutoff
-        )
+        result = [_evaluate(mps_element_prod, sites, p) for p in test_points]
+        reference = [_evaluate(Ψ, sites, p)^2 for p in test_points]
+
+        @show maximum(abs.(result - reference))
+        @show maximum(abs.(reference))
+        @test maximum(abs, result - reference) <= sqrt(default_cutoff())
     end
 
     @testset "matmul" begin
@@ -95,8 +96,8 @@ import T4AITensorCompat: TensorTrain, MPS, MPO
             combo in Iterators.product((1:d for _ in 1:proj_lev_r)...)
         ])
 
-        partΨ_l = PartitionedMPS(project.(Ref(Ψ_l), proj_l))
-        partΨ_r = PartitionedMPS(project.(Ref(Ψ_r), proj_r))
+        partΨ_l = PartitionedTT(project.(Ref(Ψ_l), proj_l))
+        partΨ_r = PartitionedTT(project.(Ref(Ψ_r), proj_r))
 
         matmul = automul(
             partΨ_l, partΨ_r; alg="zipup", tag_row="m", tag_shared="n", tag_col="l"
@@ -109,7 +110,7 @@ import T4AITensorCompat: TensorTrain, MPS, MPO
         mpo_l = rearrange_siteinds(Ψ_l, sites_mn_vec)
         mpo_r = rearrange_siteinds(Ψ_r, sites_nl_vec)
 
-        naive_matmul = T4APartitionedMPSs.contract(mpo_l, mpo_r; alg="naive")
+        naive_matmul = T4APartitionedTT.contract(mpo_l, mpo_r; alg="naive")
         mps_naive_matmul = rearrange_siteinds(naive_matmul, [[x] for x in final_sites])
 
         @test mps_matmul ≈ mps_naive_matmul
@@ -119,7 +120,7 @@ import T4AITensorCompat: TensorTrain, MPS, MPO
         @test isapprox(
             [_evaluate(mps_matmul, final_sites, p) for p in test_points],
             [_evaluate(mps_naive_matmul, final_sites, p) for p in test_points];
-            atol=sqrt(default_cutoff()), # default_cutoff() = 1e-25 is the contraction cutoff
+            atol=sqrt(default_cutoff()), # default_cutoff() = 1e-30 (from T4AITensorCompat) is the contraction cutoff
         )
     end
 end

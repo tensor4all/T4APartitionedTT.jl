@@ -1,9 +1,11 @@
 using Test
-import T4APartitionedMPSs:
-    T4APartitionedMPSs, Projector, project, SubDomainMPS, adaptive_patching, PartitionedMPS
+import T4APartitionedTT:
+    T4APartitionedTT, Projector, project, SubDomainTT, adaptive_patching, PartitionedTT
 import T4AITensorCompat: TensorTrain
 using ITensors
 using Random
+
+include("_util.jl")
 
 @testset "patching.jl" begin
     @testset "adaptive_patching" begin
@@ -16,15 +18,13 @@ using Random
         sites = collect(collect.(zip(sitesx, sitesy)))
 
         mpo = _random_mpo(sites; linkdims=20)
-        subdmps = SubDomainMPS(mpo)
+        subdtt = SubDomainTT(mpo)
 
         sites_ = collect(Iterators.flatten(sites))
-        partmps = PartitionedMPS(
-            adaptive_patching(subdmps, sites_; maxdim=10, cutoff=1e-25)
-        )
+        parttt = adaptive_patching(PartitionedTT(subdtt), sites_; maxdim=10, cutoff=1e-25)
 
-        @test length(values((partmps))) > 1
+        @test length(values((parttt))) > 1
 
-        @test TensorTrain(partmps) ≈ TensorTrain(subdmps) rtol = 1e-12
+        @test TensorTrain(parttt) ≈ TensorTrain(subdtt) rtol = 1e-12
     end
 end
